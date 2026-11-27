@@ -715,3 +715,22 @@ html[data-platform='darwin'] .titlebar {
 .dock-mic[data-state='thinking'] button {
   opacity: 0.6;
 }
+
+/* always listening: on, and waiting for the person to speak */
+.voice[data-state='ambient'] .rings path {
+  stroke: var(--bloom-deep);
+  animation: ring-breathe 3.6s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 220ms);
+}
+.voice[data-state='ambient'] .mic,
+.dock-mic[data-state='ambient'] button,
+.dock-orb[data-state='ambient'] button {
+  outline: 2px solid var(--bloom);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice[data-state='ambient'] .rings path {
+    animation: none;
+    opacity: 0.5;
+  }
+}

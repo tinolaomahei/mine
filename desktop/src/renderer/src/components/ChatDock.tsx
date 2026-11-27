@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { ArrowUp, Maximize2, Mic, Minus, Square, X } from 'lucide-react'
 import type { Turn } from '@/lib/useConversation'
-import type { MicState } from '@/lib/useSpeech'
+import type { MicLook } from '@/lib/useSpeech'
 import { cn } from '@/lib/utils'
 
 // The conversation when a screen is showing: either a small window in the
@@ -51,7 +51,7 @@ export const DockComposer = forwardRef<
     setDraft: (s: string) => void
     running: boolean
     harness: string
-    mic: MicState
+    mic: MicLook
     note: string | null
     voiceRef: RefObject<HTMLDivElement | null>
     onSend: () => void
@@ -70,7 +70,9 @@ export const DockComposer = forwardRef<
     <div className="shrink-0 border-t border-rule/70 p-2.5">
       <p className="truncate px-1.5 pb-1.5 font-mono text-[10.5px] text-neutral" aria-live="polite">
         {note ??
-          (mic === 'listening'
+          (mic === 'ambient'
+            ? 'Listening for your voice · tap the mic to pause'
+            : mic === 'listening'
             ? 'Listening. Tap the mic to send.'
             : mic === 'thinking'
               ? 'Writing down what you said'
@@ -151,7 +153,7 @@ export function ChatDock({
   title: string
   harness: string
   running: boolean
-  mic: MicState
+  mic: MicLook
   flash: string | null
   voiceRef: RefObject<HTMLDivElement | null>
   /** The conversation itself, for the window. */
@@ -208,7 +210,7 @@ export function ChatDock({
         <div
           ref={voiceRef}
           className="dock-orb"
-          data-state={listening ? 'listening' : running ? 'working' : 'idle'}
+          data-state={listening ? 'listening' : running ? 'working' : mic === 'ambient' ? 'ambient' : 'idle'}
           style={{ viewTransitionName: 'mine-chat' }}
         >
           <button

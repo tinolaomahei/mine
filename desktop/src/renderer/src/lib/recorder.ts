@@ -3,10 +3,37 @@
 const RATE = 16000
 const MAX_SECONDS = 120
 
+type Frame = (samples: Float32Array, rms: number) => void
+
+async function openMic(onFrame: Frame): Promise<() => Promise<void>> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  })
+  const ctx = new AudioContext({ sampleRate: RATE })
+  try {
+    await ctx.audioWorklet.addModule(new URL('recorder-worklet.js', document.baseURI).href)
+  } catch (err) {
+    stream.getTracks().forEach((t) => t.stop())
+    await ctx.close()
+    throw err
+  }
+  const source = ctx.createMediaStreamSource(stream)
+  const node = new AudioWorkletNode(ctx, 'mine-recorder')
+  node.port.onmessage = (e: MessageEvent<{ samples: Float32Array; rms: number }>) => onFrame(e.data.samples, e.data.rms)
+  source.connect(node)
+  return async () => {
+    node.port.close()
+    node.disconnect()
+    stream.getTracks().forEach((t) => t.stop())
+    if (ctx.state !== 'closed') await ctx.close()
+  }
+}
+
+// speech sits around 0.02–0.2 rms; map it onto 0..1 with a soft curve
+export const levelOf = (rms: number) => Math.min(1, Math.sqrt(rms * 6))
+
 export class Recorder {
-  private ctx?: AudioContext
-  private stream?: MediaStream
-  private node?: AudioWorkletNode
+  private close?: () => Promise<void>
   private chunks: Float32Array[] = []
   private length = 0
 
@@ -16,21 +43,12 @@ export class Recorder {
   ) {}
 
   async start() {
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    })
-    this.ctx = new AudioContext({ sampleRate: RATE })
-    await this.ctx.audioWorklet.addModule(new URL('recorder-worklet.js', document.baseURI).href)
-    const source = this.ctx.createMediaStreamSource(this.stream)
-    this.node = new AudioWorkletNode(this.ctx, 'mine-recorder')
-    this.node.port.onmessage = (e: MessageEvent<{ samples: Float32Array; rms: number }>) => {
-      this.chunks.push(e.data.samples)
-      this.length += e.data.samples.length
-      // speech sits around 0.02–0.2 rms; map it onto 0..1 with a soft curve
-      this.onLevel(Math.min(1, Math.sqrt(e.data.rms * 6)))
+    this.close = await openMic((samples, rms) => {
+      this.chunks.push(samples)
+      this.length += samples.length
+      this.onLevel(levelOf(rms))
       if (this.length >= RATE * MAX_SECONDS) this.onLimit()
-    }
-    source.connect(this.node)
+    })
   }
 
   /** Stop and return everything heard. */
@@ -54,13 +72,31 @@ export class Recorder {
   }
 
   private async teardown() {
-    this.node?.port.close()
-    this.node?.disconnect()
-    this.stream?.getTracks().forEach((t) => t.stop())
-    if (this.ctx && this.ctx.state !== 'closed') await this.ctx.close()
-    this.node = undefined
-    this.stream = undefined
-    this.ctx = undefined
+    await this.close?.()
+    this.close = undefined
+    this.onLevel(0)
+  }
+}
+
+/** The microphone, always on: every stretch of audio goes to onChunk as it arrives. */
+export class MicStream {
+  private close?: () => Promise<void>
+
+  constructor(
+    private onChunk: (samples: Float32Array) => void,
+    private onLevel: (level: number) => void,
+  ) {}
+
+  async start() {
+    this.close = await openMic((samples, rms) => {
+      this.onChunk(samples)
+      this.onLevel(levelOf(rms))
+    })
+  }
+
+  async stop() {
+    await this.close?.()
+    this.close = undefined
     this.onLevel(0)
   }
 }

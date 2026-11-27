@@ -75,4 +75,4 @@ Approval: nothing an agent writes runs until the person approves it in mine. App
 
 `MINE_USER_DATA` points mine at another data folder, so tests never touch the real one.
 
-Speech runs on this computer. Prompts go to whichever harness you picked, running in the folder shown in the title bar.
+Speech runs on this computer. Tap the mic (or Space) to talk, or turn on Always listening (`hands-free`): the mic stays on, Silero VAD finds where the person starts and stops talking, and each stretch goes to Parakeet and then through the same routing as anything typed. Space or the mic pauses it. Prompts go to whichever harness you picked, running in the folder shown in the title bar.

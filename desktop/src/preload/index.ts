@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { AgentEvent, MineApi, Settings, SpeechStatus, ThemeState } from '@shared/ipc'
+import type { AgentEvent, HeardSpeech, MineApi, Settings, SpeechStatus, ThemeState, VoiceState } from '@shared/ipc'
 
 function listen<T>(channel: string, cb: (v: T) => void) {
   const handler = (_e: IpcRendererEvent, v: T) => cb(v)
@@ -114,6 +114,10 @@ const api: MineApi = {
     prepare: () => ipcRenderer.invoke('speech:prepare'),
     transcribe: (samples) => ipcRenderer.invoke('speech:transcribe', samples),
     onStatus: (cb) => listen<SpeechStatus>('speech:status', cb),
+    listen: (on) => ipcRenderer.invoke('speech:listen', on),
+    feed: (samples) => ipcRenderer.send('speech:feed', samples),
+    onVoice: (cb) => listen<VoiceState>('speech:voice', cb),
+    onHeard: (cb) => listen<HeardSpeech>('speech:heard', cb),
   },
   agent: {
     run: (req) => ipcRenderer.invoke('agent:run', req),

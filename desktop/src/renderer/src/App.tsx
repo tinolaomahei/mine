@@ -527,6 +527,29 @@ export default function App() {
       },
     },
     {
+      name: 'hands-free',
+      title: 'Always listening',
+      description:
+        'Keep the microphone on so mine picks up whatever the person says as soon as they speak, with no Space or mic button. It all stays on this computer. Off goes back to tap to talk.',
+      examples: ['always listen to me', 'turn on hands-free', 'stop listening all the time', 'go back to tap to talk'],
+      params: {
+        state: {
+          description: 'On or off',
+          options: [
+            { value: 'on', description: 'Always listening' },
+            { value: 'off', description: 'Tap to talk' },
+          ],
+        },
+      },
+      canUndo: true,
+      run: async ({ state }) => {
+        const on = state !== 'off'
+        const was = !!settings?.handsFree
+        await setAndKeep({ handsFree: on })
+        return { say: on ? 'Listening for your voice' : 'Back to tap to talk', undo: () => void setAndKeep({ handsFree: was }) }
+      },
+    },
+    {
       name: 'decisions-settings',
       title: 'Instant commands settings',
       description: 'Open the settings for the decisions model that makes commands instant: provider, API key, model.',
@@ -1132,7 +1155,7 @@ export default function App() {
   }
   const routeRef = useRef(route)
   routeRef.current = route
-  const speech = useSpeech(voiceRef, (text) => void route(text, 'voice'))
+  const speech = useSpeech(voiceRef, (text) => void route(text, 'voice'), !!settings?.handsFree)
   speechRef.current = speech
 
   // commands and agents asking the window to do things
@@ -1469,7 +1492,7 @@ export default function App() {
                 title={chatTitle}
                 harness={harness.name}
                 running={convo.running}
-                mic={speech.mic}
+                mic={speech.look}
                 flash={flash}
                 voiceRef={voiceRef}
                 conversation={
@@ -1498,7 +1521,7 @@ export default function App() {
                     setDraft={setDraft}
                     running={convo.running}
                     harness={harness.name}
-                    mic={speech.mic}
+                    mic={speech.look}
                     note={note}
                     voiceRef={voiceRef}
                     onSend={sendDraft}
@@ -1559,11 +1582,14 @@ export default function App() {
                     <VoiceWay
                       voiceRef={voiceRef}
                       status={speech.status}
-                      mic={speech.mic}
+                      mic={speech.look}
                       note={speech.note ?? flash}
                       running={convo.running}
                       harness={harness.name}
                       compact={!empty}
+                      ears={speech.ears}
+                      handsFree={!!settings?.handsFree}
+                      onHandsFree={(on) => void setAndKeep({ handsFree: on })}
                       onToggle={() => void speech.toggle()}
                       onStop={convo.stop}
                       onSwitch={() => switchTo('type')}

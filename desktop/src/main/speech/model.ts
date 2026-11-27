@@ -7,6 +7,7 @@ import { app } from 'electron'
 
 // NVIDIA Parakeet TDT 0.6B v3, int8 ONNX export for sherpa-onnx. Runs fully on
 // this machine; nothing you say leaves it. Multilingual (25 European languages).
+// Silero VAD comes with it, so hands-free listening can tell speech from silence.
 
 export const MODEL = {
   id: 'parakeet-tdt-0.6b-v3-int8',
@@ -17,8 +18,12 @@ export const MODEL = {
     { name: 'decoder.int8.onnx', bytes: 11845274 },
     { name: 'joiner.int8.onnx', bytes: 6355277 },
     { name: 'encoder.int8.onnx', bytes: 652282294 },
+    { name: 'silero_vad.onnx', bytes: 643854, url: 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx' },
   ],
 } as const
+
+export const vadPath = () => join(modelDir(), 'silero_vad.onnx')
+const urlOf = (f: (typeof MODEL.files)[number]) => ('url' in f ? f.url : MODEL.base + f.name)
 
 export const MODEL_BYTES = MODEL.files.reduce((n, f) => n + f.bytes, 0)
 
@@ -54,7 +59,7 @@ export async function downloadModel(onProgress: (received: number) => void) {
     const part = target + '.part'
     if (existsSync(part)) rmSync(part)
 
-    const res = await fetch(MODEL.base + f.name)
+    const res = await fetch(urlOf(f))
     if (!res.ok || !res.body) throw new Error(`Download failed for ${f.name} (${res.status})`)
 
     let last = 0

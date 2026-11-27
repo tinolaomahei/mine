@@ -4,7 +4,7 @@ import type { RunRequest, Settings } from '@shared/ipc'
 import { detectHarnesses } from './harness/detect'
 import { cancelAgent, cancelAll, runAgent, stopTool } from './harness/run'
 import { getSettings, setSettings } from './settings'
-import { onSpeechStatus, prepareSpeech, speechStatus, stopSpeech, transcribe } from './speech/service'
+import { feedSpeech, onHandsFree, onSpeechStatus, prepareSpeech, speechStatus, startListening, stopListening, stopSpeech, transcribe } from './speech/service'
 import { agentContext, frameColors, watchTheme } from './theme'
 import { wireDecisions } from './decisions'
 import { wireConversations } from './conversations'
@@ -122,6 +122,12 @@ function wireIpc() {
   ipcMain.handle('speech:prepare', () => prepareSpeech())
   ipcMain.handle('speech:transcribe', (_e, samples: Float32Array) => transcribe(samples))
   onSpeechStatus((s) => win?.webContents.send('speech:status', s))
+  ipcMain.handle('speech:listen', (_e, on: boolean) => (on ? startListening() : stopListening()))
+  ipcMain.on('speech:feed', (_e, samples: Float32Array) => feedSpeech(samples))
+  onHandsFree({
+    onVoice: (s) => win?.webContents.send('speech:voice', s),
+    onHeard: (h) => win?.webContents.send('speech:heard', h),
+  })
 
   ipcMain.handle('agent:run', (e, req: RunRequest) => {
     const { harness, workdir } = getSettings()

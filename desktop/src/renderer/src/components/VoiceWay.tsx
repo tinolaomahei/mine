@@ -2,12 +2,20 @@ import type { RefObject } from 'react'
 import { ArrowRight, Mic, Square } from 'lucide-react'
 import type { SpeechStatus } from '@shared/ipc'
 import { Rings } from '@/lib/rings'
-import type { MicState } from '@/lib/useSpeech'
+import type { Ears, MicLook } from '@/lib/useSpeech'
 import { WaySwitch } from './WaySwitch'
 
 const mb = (n: number) => `${Math.round(n / 1e6)} MB`
 
-function label(status: SpeechStatus | null, mic: MicState, running: boolean, harness: string) {
+function handsFreeLabel(ears: Ears) {
+  if (ears === 'hearing') return { main: 'Hearing you', sub: 'Pause when you’re done and it goes' }
+  if (ears === 'writing') return { main: 'Writing down what you said', sub: 'On this computer, with Parakeet' }
+  if (ears === 'paused') return { main: 'Paused', sub: 'Space or the mic to listen again' }
+  return { main: 'Listening for your voice', sub: 'Just talk. Space or the mic pauses it.' }
+}
+
+function label(status: SpeechStatus | null, mic: MicLook, running: boolean, harness: string, ears: Ears) {
+  if (ears !== 'off' && mic !== 'blocked') return handsFreeLabel(ears)
   if (mic === 'listening') return { main: 'Listening', sub: 'Tap to send · Esc to cancel' }
   if (mic === 'thinking') return { main: 'Writing down what you said', sub: 'On this computer, with Parakeet' }
   if (running) return { main: `${harness} is working`, sub: 'Tap to talk. Say “stop”, or say what’s next.' }
@@ -31,13 +39,19 @@ export function VoiceWay({
   running,
   harness,
   compact,
+  ears,
+  handsFree,
+  onHandsFree,
   onToggle,
   onStop,
   onSwitch,
 }: {
   voiceRef: RefObject<HTMLDivElement | null>
   status: SpeechStatus | null
-  mic: MicState
+  mic: MicLook
+  ears: Ears
+  handsFree: boolean
+  onHandsFree: (on: boolean) => void
   note: string | null
   running: boolean
   harness: string
@@ -47,10 +61,11 @@ export function VoiceWay({
   onSwitch: () => void
 }) {
   // while an agent works the mic stays a mic: you can still say "stop", or what's next
-  const state = mic === 'idle' && running ? 'working' : mic
+  const state = (mic === 'idle' || mic === 'ambient') && running && ears !== 'hearing' ? 'working' : mic
   const downloading = status?.state === 'downloading'
   const progress = downloading ? status.received / status.bytes : 0
-  const text = label(status, mic, running, harness)
+  const text = label(status, mic, running, harness, ears)
+  const hands = ears !== 'off'
   const C = 2 * Math.PI * 48
 
   return (
@@ -70,8 +85,8 @@ export function VoiceWay({
             className="mic"
             onClick={onToggle}
             disabled={mic === 'thinking' || downloading}
-            aria-label={mic === 'listening' ? 'Stop listening and send' : 'Start talking'}
-            aria-pressed={mic === 'listening'}
+            aria-label={hands ? (ears === 'paused' ? 'Listen again' : 'Pause listening') : mic === 'listening' ? 'Stop listening and send' : 'Start talking'}
+            aria-pressed={hands ? ears !== 'paused' : mic === 'listening'}
           >
             <Mic strokeWidth={1.8} />
             {downloading && (
@@ -86,6 +101,18 @@ export function VoiceWay({
         <div className="mt-1 flex min-h-[3.25rem] max-w-[26rem] flex-col items-center text-center" aria-live="polite">
           <p className="text-[1.0625rem] font-semibold tracking-[-0.01em]">{text.main}</p>
           <p className="mt-0.5 font-mono text-[11px] leading-5 text-neutral">{note ?? text.sub}</p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={handsFree}
+            onClick={() => onHandsFree(!handsFree)}
+            className="mt-2.5 flex h-7 items-center gap-2 rounded-full px-2.5 text-[0.8125rem] font-semibold text-muted-foreground transition-colors hover:bg-paper-2 hover:text-ink"
+          >
+            <span aria-hidden="true" className={`relative h-4 w-7 rounded-full transition-colors ${handsFree ? 'bg-bloom-deep' : 'bg-paper-3'}`}>
+              <span className={`absolute top-0.5 size-3 rounded-full bg-paper transition-[left] ${handsFree ? 'left-3.5' : 'left-0.5'}`} />
+            </span>
+            Always listening
+          </button>
           {running && (
             <button
               type="button"

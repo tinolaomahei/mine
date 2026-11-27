@@ -36,7 +36,12 @@ export type Settings = {
   workdir: string
   /** The fast decisions layer. null (or missing) until the person has been asked. */
   decisions?: DecisionsSettings | null
+  /** Always listening: the mic stays on and whatever the person says is picked up when they speak. */
+  handsFree?: boolean
 }
+
+export type VoiceState = 'speaking' | 'decoding' | 'quiet'
+export type HeardSpeech = { text: string; seconds: number }
 
 export type SpeechStatus =
   | { state: 'missing'; model: string; bytes: number }
@@ -228,6 +233,12 @@ export interface MineApi {
     prepare(): Promise<SpeechStatus>
     transcribe(samples: Float32Array): Promise<string>
     onStatus(cb: (s: SpeechStatus) => void): Unsubscribe
+    /** Hands-free: start or stop listening for speech in the audio fed in. */
+    listen(on: boolean): Promise<void>
+    /** Hands-free: the next stretch of microphone audio, 16 kHz mono. */
+    feed(samples: Float32Array): void
+    onVoice(cb: (s: VoiceState) => void): Unsubscribe
+    onHeard(cb: (h: HeardSpeech) => void): Unsubscribe
   }
   agent: {
     run(req: RunRequest): Promise<void>
