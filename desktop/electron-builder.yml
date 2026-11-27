@@ -1,0 +1,65 @@
+# Packages mine into installers for Windows, macOS and Linux.
+# Run locally with `npm run dist`, or let .github/workflows/release.yml build every platform.
+appId: computer.mine.desktop
+productName: mine
+executableName: mine
+copyright: Copyright © 2026 tinolaomahei
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**
+  - resources/**
+  - package.json
+
+# Speech recognition is a native module with its own libraries; they have to sit outside the asar.
+asarUnpack:
+  - node_modules/sherpa-onnx-*/**
+
+# sherpa-onnx ships prebuilt Node-API binaries, so nothing needs compiling against Electron.
+npmRebuild: false
+
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+win:
+  icon: resources/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: mine
+  uninstallDisplayName: mine
+  deleteAppDataOnUninstall: false
+
+mac:
+  icon: resources/icon.png
+  category: public.app-category.productivity
+  target: [dmg, zip]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSMicrophoneUsageDescription: mine listens when you talk to it. Your voice is turned into text on this computer and never leaves it.
+
+dmg:
+  title: ${productName} ${version}
+
+linux:
+  icon: resources/icon.png
+  category: Utility
+  synopsis: A desktop AI harness that learns how you work.
+  description: mine starts with nothing and learns how you work. It runs on the agent you already use.
+  maintainer: tinolaomahei <tinolaomahei@users.noreply.github.com>
+  target: [AppImage, deb, rpm]
+
+deb:
+  depends: [libgtk-3-0, libnotify4, libnss3, libxss1, libxtst6, xdg-utils, libatspi2.0-0, libuuid1, libsecret-1-0]

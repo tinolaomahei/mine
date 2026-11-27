@@ -24,6 +24,10 @@ Every feature in the app is also a command, so anything you can click you can al
 | [`desktop/`](desktop) | The app: Electron, React and TypeScript. Its [README](desktop/README.md) explains how it all fits together. |
 | [`landing/`](landing) | The landing page: Vite and React. |
 
+## Downloading it
+
+Installers for Windows, macOS and Linux are on the [releases page](https://github.com/tinolaomahei/mine/releases). They aren't signed yet, so Windows will show a SmartScreen warning and on a Mac you'll need to right-click the app and choose Open the first time.
+
 ## Running it
 
 You'll need a recent Node (I'm on 24). Claude Code or Pi needs to be installed and signed in for the agent side to work.

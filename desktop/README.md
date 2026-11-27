@@ -7,7 +7,33 @@ npm install
 npm run dev        # app with hot reload
 npm run build      # production bundle in out/
 npm run typecheck
+npm run dist       # installer for this computer in dist/
+npm run dist:dir   # unpacked app only, quicker
+npm run smoke      # checks the packaged app can load speech and its resources
 ```
+
+## Releasing
+
+Installers come from `electron-builder.yml`: an NSIS setup for Windows, a dmg and zip for macOS (Apple silicon and Intel), and an AppImage, deb and rpm for Linux. They're x64 everywhere except the Apple silicon build.
+
+`.github/workflows/release.yml` builds them all. To release, bump `version` in `package.json`, commit, then tag and push:
+
+```
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Each platform builds on its own runner and runs the smoke test. The installers land on a draft GitHub release with a `SHA256SUMS` file and build provenance (`gh attestation verify <file> --repo tinolaomahei/mine`). The release stays a draft until it's published by hand. Running the workflow from the Actions tab builds everything without releasing, which is handy for trying the installers first.
+
+Signing is optional and switches on when the secrets are there. Without them, Windows shows a SmartScreen warning, and macOS gets an ad-hoc signature, so the first open has to go through right-click, Open.
+
+| Secret | What it is |
+| --- | --- |
+| `MAC_CERTIFICATE`, `MAC_CERTIFICATE_PASSWORD` | A Developer ID Application certificate as a base64 `.p12` |
+| `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | Notarisation, used when the Mac certificate is set |
+| `WIN_CERTIFICATE`, `WIN_CERTIFICATE_PASSWORD` | A Windows code signing certificate as a base64 `.pfx` |
+
+`.github/workflows/ci.yml` runs on every pull request and push to `main`. It typechecks, packages the Linux app and runs the smoke test, then lints and builds the landing page.
 
 ## How it fits together
 
