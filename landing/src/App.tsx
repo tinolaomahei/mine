@@ -7,8 +7,8 @@ import { Growth } from './components/Growth'
 import { Arrange } from './components/Arrange'
 import { Team } from './components/Team'
 import { Engine } from './components/Engine'
-
-const REPO = 'https://github.com/tinolaomahei/mine'
+import { Download } from './components/Download'
+import { REPO } from './lib/download'
 
 function GitHubMark() {
   return (
@@ -94,8 +94,8 @@ export default function App() {
             <GitHubMark />
             <span>GitHub</span>
           </a>
-          <a href="#access" className="edge-cta">
-            Early access
+          <a href="#download" className="edge-cta">
+            Download
           </a>
         </div>
       </nav>
@@ -109,6 +109,7 @@ export default function App() {
         <Growth />
         <Team />
         <Engine />
+        <Download />
         <Access />
       </main>
 

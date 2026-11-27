@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Rings } from '../lib/rings'
 import { prefersReducedMotion } from '../lib/useInView'
+import { DownloadButton } from './Download'
 
 const SCRIPT =
   'I run product at a small fintech. Most of my day is in Jira, GitHub and Slack, with Figma for design and Postgres on AWS. Every Monday I pull last week’s bugs into a summary for the team.'
@@ -69,6 +70,12 @@ export function Hero() {
           mine is a desktop AI harness that begins as one button. Tell it what you do and which tools you use. It
           learns the rest a task at a time, and grows into a workspace that only fits you.
         </p>
+        <div className="hero-actions">
+          <DownloadButton />
+          <a href="#download" className="hero-more">
+            Other platforms
+          </a>
+        </div>
         <p className="hero-hint">
           <span className="mono">Try it</span> Press the button and listen in on a first conversation.
         </p>
