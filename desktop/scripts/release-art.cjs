@@ -1,4 +1,4 @@
-// Draws a release's graphic: its tree's name, and the trunk so far. Each major
+// Draws a release's graphic: its version, its tree's name, and the trunk so far. Each major
 // version is a pink ring and each minor release a fine growth line inside it.
 // Run with Electron: npx electron scripts/release-art.cjs 0.1.0
 const { app, BrowserWindow } = require('electron')
@@ -82,21 +82,16 @@ const html = `<!doctype html><html><head><meta charset="utf-8">${fonts}<style>
   * { margin: 0; box-sizing: border-box; }
   body { width: ${W}px; height: ${H}px; background: var(--bg); overflow: hidden; position: relative; color: var(--ink); }
   svg { position: absolute; inset: 0; }
-  .text { position: absolute; left: 84px; top: 72px; bottom: 64px; display: flex; flex-direction: column; }
+  .text { position: absolute; left: 84px; top: 72px; bottom: 96px; display: flex; flex-direction: column; }
   .mark { font: 650 40px/1 'Familjen Grotesk Variable'; letter-spacing: -0.02em; display: inline-flex; align-items: baseline; }
   .mark::after { content: ''; width: 0.21em; height: 0.21em; margin-left: 0.05em; border-radius: 50%; background: var(--accent); }
   .eyebrow { margin-top: auto; font: 500 17px/1 'Martian Mono Variable'; letter-spacing: 0.06em; color: var(--accent); text-transform: uppercase; }
   h1 { margin-top: 18px; font: 650 168px/0.9 'Familjen Grotesk Variable'; letter-spacing: -0.045em; }
-  p { margin-top: 26px; max-width: 560px; font: 400 34px/1.2 'Newsreader Variable'; color: var(--ink); }
-  .foot { margin-top: 30px; font: 400 15px/1 'Martian Mono Variable'; color: var(--muted); }
-  .foot em { font-style: italic; }
 </style></head><body>${svg}
   <div class="text">
     <span class="mark">mine</span>
     <span class="eyebrow">Release ${version}</span>
     <h1>${tree.name}</h1>
-    <p>${tree.line}</p>
-    <span class="foot"><em>${tree.botanical}</em> &nbsp;•&nbsp; mine.computer</span>
   </div>
 </body></html>`
 

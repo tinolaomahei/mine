@@ -4,14 +4,14 @@ Each major version of mine is named after a native tree. Minor versions and patc
 
 Every release gets a graphic. The tree's name is on it, with the trunk drawn as rings: one pink ring for each major version so far, and a fine growth line inside the current ring for each minor release. The flower or seed of that version's tree sits in the middle.
 
-| Major | Tree | |
-| --- | --- | --- |
-| 0 | Mānuka | The first tree back on bare ground. It shelters the ones that come up after it. |
+| Major | Tree |
+| --- | --- |
+| 0 | Mānuka |
 
 ## Making one
 
 1. Add or check the tree for the major version in `trees.json`.
-2. Write the notes in `<version>.md`.
+2. Write the notes in `<version>.md`. Start them with the graphic from the repo, `![mine <version>, <tree>](https://raw.githubusercontent.com/tinolaomahei/mine/main/releases/<version>.png)`, so it shows while the release is still a draft too.
 3. Draw the graphic from `desktop/`:
 
    ```
