@@ -15,5 +15,6 @@
       "auth": "oauth",
       "label": "Sign in with Notion"
     }
-  ]
+  ],
+  "logo": "notion.svg"
 }

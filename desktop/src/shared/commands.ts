@@ -130,5 +130,8 @@ The mine object (every call is async):
 - mine.notify(title, body)
 - mine.conversation.new() / mine.agent.stop() / mine.agent.send(text)   send hands text to the agent as a message
 - mine.exec(commandLine, { cwd })   runs a shell command; resolves { stdout, stderr, code }
+- mine.run(command, params)   run any mine command, e.g. mine.run('add-widget', { widget: 'jira-board' }); resolves { say, view }
+- mine.options(command, param)   that param's choices right now, [{ value, description }], e.g. which widgets are on the screen for remove-from-screen
+mine.run can't run the command calling it, goes at most 3 commands deep, and shares run()'s 15 seconds. Only the outer command's say, view and Undo show.
 
 run() has 15 seconds. Keep it deterministic and quick; it's meant to happen instantly.`

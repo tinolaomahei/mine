@@ -22,7 +22,7 @@ import { mkdirSync, watch } from 'node:fs'
 
 // One place on disk for settings and the speech model, however we're launched.
 app.setName('mine')
-app.setPath('userData', join(app.getPath('appData'), 'mine'))
+app.setPath('userData', process.env.MINE_USER_DATA || join(app.getPath('appData'), 'mine'))
 registerWidgetScheme()
 
 let win: BrowserWindow | undefined

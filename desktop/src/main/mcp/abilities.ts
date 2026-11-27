@@ -158,6 +158,7 @@ way is one of:
 - { kind: "mcp", url, auth: "fields", fields: [...], headers: { "Authorization": "Bearer {{token}}" } }
 - { kind: "api", base, hosts, auth: "fields", fields: [...], headers, test?: { path, account? } }: a web API read with GETs. hosts are the only hosts the person's details are ever sent to. In base and headers, {{key}} is a field's value and {{base64:a:b}} is "a:b" in base64.
 - { kind: "api", base, hosts, auth: "oauth", oauth: { authorize, token, scopes, client } }: needs mine registered with the service.
+- { kind: "local" }: programs already signed in on this computer (gh, az, aws, kubectl...). No credentials and no steps; it's connected straight away. Give opens (e.g. ["github.com"]) so widgets can open links it syncs. Its sources run commands (see save_source).
 fields: [{ key, label, placeholder?, secret?: true for tokens, url?: true for addresses, help? }]. steps: what the person does before that, as [{ kind: "link", label, url, detail? } | { kind: "confirm", label } | { kind: "note", label }]. Be exact: name the page, the button and what to copy. mine adds the sign-in, the fields and a check itself.
 
 You never see what the person types into a secret field, and you can't fill one in. Tell them in a sentence what to do, and that the checklist is on their screen.`,
@@ -180,21 +181,26 @@ You never see what the person types into a secret field, and you can't fill one 
   {
     name: 'connection_call',
     description:
-      'Read from a connected service on the person’s behalf, to see what its data looks like before you make a source or a widget. For MCP: { connection, tool, args }. A tool that might change something asks the person first. For a web API: { connection, path, query?, format? } (GET only; query values can use {{$now}}, {{$today}}, {{$in:7d}}, {{$ago:1d}}). Ask for small pages.',
+      'Read from a connected service on the person’s behalf, to see what its data looks like before you make a source or a widget. For MCP: { connection, tool, args }. A tool that might change something asks the person first. For a web API: { connection, path, query?, format? } (GET only; query values can use {{$now}}, {{$today}}, {{$in:7d}}, {{$ago:1d}}). For a local connection: { connection, command, args, cwd?, format? } runs the program once, without a shell (args is a list of strings, one per argument), after the person OKs that exact command; you get back its parsed output, the same shape a source would see. Ask for small pages.',
     inputSchema: obj({
       connection: str,
       tool: str,
-      args: { type: 'object' },
+      args: { description: 'MCP: the tool’s arguments, an object. Local: the program’s arguments, a list of strings.' },
       path: str,
       query: { type: 'object', additionalProperties: { type: 'string' } },
-      format: { type: 'string', enum: ['json', 'ics'] },
+      command: { type: 'string', description: 'Local: the program to run, e.g. "gh". Found on PATH.' },
+      cwd: { type: 'string', description: 'Local: the full path to run it in. Defaults to the person’s home folder.' },
+      format: { type: 'string', enum: ['json', 'jsonl', 'lines', 'ics'], description: 'Web API: json or ics. Local: json (default; several values in a row are read as pages), jsonl, or lines.' },
     }, ['connection']),
   },
   {
     name: 'save_source',
     description: `Keep data from a connection flowing into a collection, every so often, so widgets show it. Prefer a standard collection (work, agenda, messages) so mine's own widgets show it with nothing more to build; otherwise use a new collection and build a widget for it (save_widget with data: [collection]).
 
-call: { tool, args } for MCP (a tool that only reads), or { path, query?, format? } for a web API.
+call is one of:
+- { tool, args } for MCP (a tool that only reads).
+- { path, query?, format? } for a web API.
+- { command, args, cwd?, format? } for a local connection: runs a program on the person's computer, never through a shell, so each argument is its own string. format is json (the default; several JSON values in a row, like a paginated CLI prints, are read as pages, and pick.items applies to each), jsonl or lines. It gets 30 seconds and 8 MB of output. Example: { command: "gh", args: ["api", "search/issues?q=review-requested:@me+is:open+is:pr", "--paginate"] } with pick { items: "items", id: "id", fields: { title: "title", url: "html_url", key: "{{repository_url}}#{{number}}", service: "=GitHub", changed: "updated_at" } }.
 pick turns the answer into documents: { items: "path.to.list", id: "path.to.id", fields: { title: "fields.summary", url: "{{@site}}/browse/{{key}}", service: "=Jira" } }, where a field is a dotted path into each item, a template ({{path}} reads the item, {{@key}} a connection field), or a fixed value after "=". Try the call with connection_call first and check the shape.
 
 The person must approve it in mine before it runs (and again after any change). Tell them it's waiting for their OK.`,
@@ -203,7 +209,10 @@ The person must approve it in mine before it runs (and again after any change). 
         connection: str,
         title: { type: 'string', description: 'e.g. "My open Linear issues"' },
         what: { type: 'string', description: 'What it fetches, in plain words, for the approval card.' },
-        call: { type: 'object' },
+        call: {
+          type: 'object',
+          description: 'MCP { tool, args }, web API { path, query?, format? }, or local { command, args: string[], cwd?, format?: "json" | "jsonl" | "lines" }.',
+        },
         every: { type: 'number', description: 'Minutes between syncs, 5 to 1440. 15 is a good default.' },
         into: { type: 'string', description: 'The collection to fill.' },
         pick: { type: 'object' },

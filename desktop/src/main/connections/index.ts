@@ -1,14 +1,20 @@
 import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 import { app, ipcMain, shell, type BrowserWindow } from 'electron'
 import {
   CONNECTION_ID,
   STANDARD_COLLECTIONS,
   atPath,
+  commandLine,
   hostMatches,
+  isCommandCall,
+  isToolCall,
   pickDocs,
   slug,
   stepsLeft,
+  type ApiCall,
+  type CommandCall,
+  type CommandFormat,
   type Connection,
   type ConnectionsState,
   type Field,
@@ -17,6 +23,7 @@ import {
   type SourceDef,
   type SourceInfo,
   type Step,
+  type ToolCall,
   type Way,
   type WayInfo,
 } from '@shared/connections'
@@ -24,6 +31,7 @@ import { approve, forget, hashOf, isApproved } from '../approvals'
 import { COLLECTION, data } from '../data-store'
 import { deleteSecrets, getSecret, setSecret } from '../secrets'
 import { apiGet, fill } from './api'
+import { runCommand } from './command'
 import { McpClient, resultData, Unauthorized, type RemoteTool } from './mcp-client'
 import { cancelSignIn, NeedsClient, refresh, signIn, type OAuthClient, type Tokens } from './oauth'
 
@@ -41,6 +49,9 @@ import { cancelSignIn, NeedsClient, refresh, signIn, type OAuthClient, type Toke
 const userDir = () => app.getPath('userData')
 const storeFile = () => join(userDir(), 'connections.json')
 const servicesDir = () => join(__dirname, '../../resources/services')
+
+const LOCAL_ACCOUNT = 'This computer'
+const LOCAL_NOTE = 'Nothing to sign in to here. It runs programs already signed in on this computer, and shows you each exact command before it runs.'
 
 type SavedSource = SourceDef & { by: 'agent' | 'person'; createdAt: number }
 type Run = { lastRun?: number; lastError?: string; count?: number }
@@ -106,11 +117,15 @@ function oauthConfig(): { cimd?: string; clients: Record<string, OAuthClient> } 
 
 // --- state for the window and agents ----------------------------------------------
 
+/** Who mine registers with, for the clients in oauth-clients.json. */
+const REGISTRARS: Record<string, string> = { google: 'Google', microsoft: 'Microsoft', github: 'GitHub', slack: 'Slack', asana: 'Asana', hubspot: 'HubSpot' }
+
 function wayInfo(w: Way, index: number, service: string): WayInfo {
   const label = w.label ?? (w.auth === 'oauth' ? 'Sign in' : 'Use an API token')
   if (w.auth === 'oauth') {
     const key = w.kind === 'mcp' ? w.client : w.oauth.client
-    if (key && !oauthConfig().clients[key]?.id) return { index, kind: w.kind, auth: w.auth, label, ready: false, why: `mine isn’t registered with ${service} yet, so signing in isn’t open.` }
+    if (key && !oauthConfig().clients[key]?.id)
+      return { index, kind: w.kind, auth: w.auth, label, ready: false, why: `mine isn’t registered with ${REGISTRARS[key] ?? service} yet, so signing in isn’t open.` }
   }
   return { index, kind: w.kind, auth: w.auth, label, ready: true }
 }
@@ -120,14 +135,15 @@ const serviceInfo = (s: ServiceDef): ServiceInfo => ({ ...s, ways: s.ways.map((w
 const runOf = (id: string): Run => store.runs[id] ?? {}
 const sourceHash = (s: SourceDef) => hashOf(JSON.stringify([s.connection, s.title, s.what, s.call, s.every, s.into, s.pick ?? null]))
 
+function readOnlyOf(s: SavedSource): boolean | null {
+  if (isCommandCall(s.call)) return null
+  if (!isToolCall(s.call)) return true
+  const name = s.call.tool
+  return toolCache.get(s.connection)?.find((t) => t.name === name)?.annotations?.readOnlyHint ?? null
+}
+
 function sourceInfo(s: SavedSource): SourceInfo {
-  const tool = 'tool' in s.call ? toolCache.get(s.connection)?.find((t) => t.name === (s.call as { tool: string }).tool) : undefined
-  return {
-    ...s,
-    approved: isApproved('source', s.id, sourceHash(s)),
-    readOnly: 'tool' in s.call ? (tool ? tool.annotations?.readOnlyHint ?? null : null) : true,
-    ...runOf(s.id),
-  }
+  return { ...s, approved: isApproved('source', s.id, sourceHash(s)), readOnly: readOnlyOf(s), ...runOf(s.id) }
 }
 
 export function connectionsState(): ConnectionsState {
@@ -164,6 +180,7 @@ function values(c: Connection) {
 
 /** The hosts this connection's details may go to. */
 function hostsOf(c: Connection): string[] {
+  if (c.way.kind === 'local') return []
   if (c.way.kind === 'mcp') return [new URL(c.way.url).host]
   const v = values(c)
   return c.way.hosts
@@ -210,10 +227,17 @@ function mcpFor(c: Connection) {
 type Call = SourceDef['call']
 
 /** One request to a service, with a single retry after refreshing an expired sign-in. */
+function runLocal(c: Connection, call: Call) {
+  if (!isCommandCall(call)) throw new Error(`${c.name} runs programs on this computer; give a command and its args.`)
+  return runCommand(call)
+}
+
 async function callService(c: Connection, call: Call): Promise<unknown> {
+  if (c.way.kind === 'local') return runLocal(c, call)
+  const way = c.way
   const once = async (fresh: boolean): Promise<unknown> => {
-    if (c.way.kind === 'mcp') {
-      if (!('tool' in call)) throw new Error(`${c.name} is reached through its tools; name a tool.`)
+    if (way.kind === 'mcp') {
+      if (!isToolCall(call)) throw new Error(`${c.name} is reached through its tools; name a tool.`)
       if (fresh) await headersFor(c, true)
       const r = await mcpFor(c).call(call.tool, call.args ?? {})
       const value = resultData(r)
@@ -221,7 +245,7 @@ async function callService(c: Connection, call: Call): Promise<unknown> {
       return value
     }
     if (!('path' in call)) throw new Error(`${c.name} is reached through its web API; give a path.`)
-    return apiGet({ base: fill(c.way.base, values(c)), hosts: hostsOf(c), headers: await headersFor(c, fresh), path: call.path, query: call.query, format: call.format })
+    return apiGet({ base: fill(way.base, values(c)), hosts: hostsOf(c), headers: await headersFor(c, fresh), path: call.path, query: call.query, format: call.format })
   }
   try {
     return await once(false)
@@ -244,7 +268,8 @@ async function callService(c: Connection, call: Call): Promise<unknown> {
 
 function stepsFor(way: Way, extra: Omit<Step, 'id'>[] = []): Step[] {
   const steps: Step[] = extra.map((s, i) => ({ ...s, id: `s${i + 1}` }))
-  if (way.auth === 'oauth') steps.push({ id: 'signin', kind: 'signin', label: way.label ?? 'Sign in' })
+  if (way.kind === 'local') steps.push({ id: 'local', kind: 'note', label: LOCAL_NOTE })
+  else if (way.auth === 'oauth') steps.push({ id: 'signin', kind: 'signin', label: way.label ?? 'Sign in' })
   else {
     for (const f of way.fields) steps.push({ id: `f-${f.key}`, kind: 'field', field: f.key, label: f.label, detail: f.help })
     steps.push({ id: 'test', kind: 'test', label: 'Check it works' })
@@ -316,11 +341,36 @@ const https = (u: string) => {
 }
 
 /** A connection an agent designed, for a service mine doesn't know. Checked before it's kept. */
+function addLocal(name: string, why: unknown, opens: unknown): Connection {
+  const way: Way = { kind: 'local', auth: 'none', label: 'Programs on this computer' }
+  const c: Connection = {
+    id: uniqueId(name),
+    name,
+    why: why ? String(why).slice(0, 300) : undefined,
+    way,
+    steps: stepsFor(way),
+    status: 'connected',
+    account: LOCAL_ACCOUNT,
+    fields: {},
+    secrets: [],
+    done: [],
+    opens: Array.isArray(opens) ? opens.map(String).slice(0, 10) : undefined,
+    by: 'agent',
+    createdAt: Date.now(),
+    connectedAt: Date.now(),
+  }
+  store.connections.push(c)
+  save()
+  return c
+}
+
 export function addCustom(input: Record<string, any>): Connection {
   const name = String(input.name ?? '').trim().slice(0, 60)
   if (!name) throw new Error('Give the connection a name.')
+  if (input.way?.kind === 'local') return addLocal(name, input.why, input.opens)
   const w = input.way as Way | undefined
-  if (!w || (w.kind !== 'mcp' && w.kind !== 'api')) throw new Error('way.kind must be "mcp" (a remote MCP server) or "api" (a web API read with GETs).')
+  if (!w || (w.kind !== 'mcp' && w.kind !== 'api'))
+    throw new Error('way.kind must be "mcp" (a remote MCP server), "api" (a web API read with GETs) or "local" (programs on this computer).')
   const fields = (w.auth === 'fields' ? w.fields : []) ?? []
   if (w.auth !== 'oauth' && w.auth !== 'fields') throw new Error('way.auth must be "oauth" or "fields".')
   for (const f of fields) if (!/^[a-z][a-zA-Z0-9_]{0,31}$/.test(String(f?.key)) || !f.label) throw new Error('Each field needs a key (letters and digits) and a label.')
@@ -395,13 +445,14 @@ export async function test(id: string) {
   const c = find(id)
   try {
     let account: string | undefined
-    if (c.way.kind === 'mcp') {
+    if (c.way.kind === 'local') account = LOCAL_ACCOUNT
+    else if (c.way.kind === 'mcp') {
       const m = mcpFor(c)
       m.reset()
       const tools = await m.tools()
       toolCache.set(c.id, tools)
       account = m.serverName ? `${m.serverName} · ${tools.length} tools` : `${tools.length} tools`
-    } else if (c.way.test) {
+    } else if (c.way.kind === 'api' && c.way.test) {
       const r = await callService(c, { path: c.way.test.path })
       const a = c.way.test.account ? atPath(r, c.way.test.account) : undefined
       account = a ? String(a) : Array.isArray(r) ? `${r.length} upcoming events` : undefined
@@ -447,15 +498,49 @@ export function removeConnection(id: string) {
 
 // --- sources --------------------------------------------------------------------------
 
+const record = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {})
+const plainText = (s: string) => !/[\0\r\n]/.test(s)
+const FORMATS: CommandFormat[] = ['json', 'jsonl', 'lines']
+
+function checkCommand(raw: unknown): CommandCall {
+  const r = record(raw)
+  const command = typeof r.command === 'string' ? r.command.trim() : ''
+  if (!command || command.length > 260 || !plainText(command)) throw new Error('call.command is the program to run, like "gh".')
+  const args = Array.isArray(r.args) ? r.args : []
+  if (args.length > 200 || !args.every((a): a is string => typeof a === 'string' && a.length <= 8000 && plainText(a)))
+    throw new Error('call.args is a list of strings, one per argument, with no line breaks.')
+  const cwd = typeof r.cwd === 'string' && r.cwd.trim() ? r.cwd.trim() : undefined
+  if (cwd && !isAbsolute(cwd)) throw new Error('call.cwd must be a full path.')
+  const format = FORMATS.find((f) => f === r.format)
+  return { command, args, ...(cwd ? { cwd } : {}), ...(format ? { format } : {}) }
+}
+
+function checkTool(c: Connection, raw: unknown): ToolCall {
+  const r = record(raw)
+  if (typeof r.tool !== 'string') throw new Error(`${c.name} is an MCP connection: call needs { tool, args }.`)
+  return { tool: r.tool, args: record(r.args) }
+}
+
+function checkApi(c: Connection, raw: unknown): ApiCall {
+  const r = record(raw)
+  if (typeof r.path !== 'string') throw new Error(`${c.name} is a web API connection: call needs { path, query?, format? }.`)
+  const query = r.query ? Object.fromEntries(Object.entries(record(r.query)).map(([k, v]) => [k, String(v)])) : undefined
+  const format = r.format === 'ics' || r.format === 'json' ? r.format : undefined
+  return { path: r.path, query, format }
+}
+
+function callFor(c: Connection, raw: unknown): SourceDef['call'] {
+  if (c.way.kind === 'local') return checkCommand(raw)
+  if (c.way.kind === 'mcp') return checkTool(c, raw)
+  return checkApi(c, raw)
+}
+
 function checkSource(input: Record<string, any>): SourceDef {
   const c = find(String(input.connection ?? ''))
   const title = String(input.title ?? '').trim().slice(0, 80)
   if (!title) throw new Error('Give the source a title.')
   const into = String(input.into ?? '')
   if (!COLLECTION.test(into)) throw new Error(`"${into}" isn't a collection name. Use lowercase letters, digits, - and _.`)
-  const call = input.call ?? {}
-  if (c.way.kind === 'mcp' && typeof call.tool !== 'string') throw new Error(`${c.name} is an MCP connection: call needs { tool, args }.`)
-  if (c.way.kind === 'api' && typeof call.path !== 'string') throw new Error(`${c.name} is a web API connection: call needs { path, query?, format? }.`)
   const pick = input.pick && typeof input.pick === 'object' ? input.pick : undefined
   if (pick?.fields && Object.values(pick.fields).some((v) => typeof v !== 'string')) throw new Error('pick.fields maps each field to a path or template string.')
   const every = Math.min(1440, Math.max(5, Math.round(Number(input.every) || 15)))
@@ -464,7 +549,7 @@ function checkSource(input: Record<string, any>): SourceDef {
     connection: c.id,
     title,
     what: String(input.what ?? title).slice(0, 300),
-    call: c.way.kind === 'mcp' ? { tool: String(call.tool), args: call.args ?? {} } : { path: String(call.path), query: call.query, format: call.format === 'ics' ? 'ics' : call.format === 'json' ? 'json' : undefined },
+    call: callFor(c, input.call),
     every,
     into,
     pick,
@@ -561,6 +646,12 @@ function schedule() {
 
 // --- for agents -------------------------------------------------------------------------
 
+function reachedBy(w: Way) {
+  if (w.kind === 'local') return 'programs on this computer: call { command, args, cwd?, format? }'
+  if (w.kind === 'mcp') return `MCP tools at ${w.url}`
+  return `web API at ${w.base.includes('{{') ? '(the person’s address)' : w.base}`
+}
+
 /** What an agent sees: no secrets, no tokens, just what's there and what's left to do. */
 export function agentView() {
   const st = connectionsState()
@@ -573,7 +664,7 @@ export function agentView() {
       status: c.status,
       account: c.account,
       error: c.error,
-      reachedBy: c.way.kind === 'mcp' ? `MCP tools at ${c.way.url}` : `web API at ${c.way.base.includes('{{') ? '(the person’s address)' : c.way.base}`,
+      reachedBy: reachedBy(c.way),
       stepsLeft: stepsLeft(c),
       fields: c.fields,
     })),
@@ -584,9 +675,18 @@ export function agentView() {
 
 type Ask = (tool: string, input: unknown, run?: string, outside?: string) => Promise<{ allow: boolean; message?: string }>
 
+async function agentCommand(c: Connection, req: Record<string, unknown>, ask: Ask) {
+  const call = checkCommand(req)
+  const where = call.cwd ? ` in ${call.cwd}` : ''
+  const r = await ask('Bash', { command: commandLine(call), description: `A test run for ${c.name}, through mine${where}` }, req.run ? String(req.run) : undefined)
+  if (!r.allow) throw new Error(r.message ?? 'The person said no.')
+  return runCommand(call)
+}
+
 async function agentCall(req: Record<string, any>, ask: Ask) {
   const c = find(String(req.connection ?? ''))
   if (c.status !== 'connected') throw new Error(`${c.name} isn’t connected yet. The person has ${stepsLeft(c)} step(s) left on its checklist.`)
+  if (c.way.kind === 'local') return agentCommand(c, req, ask)
   if (c.way.kind === 'mcp') {
     const tool = String(req.tool ?? '')
     if (!toolCache.has(c.id)) toolCache.set(c.id, await mcpFor(c).tools())
@@ -611,6 +711,12 @@ async function agentTools(req: Record<string, any>) {
     broadcast()
     return tools.map((t) => ({ name: t.name, description: t.description?.slice(0, 600), readOnly: t.annotations?.readOnlyHint ?? null, inputSchema: t.inputSchema }))
   }
+  if (c.way.kind === 'local')
+    return {
+      kind: 'programs on this computer',
+      run: 'connection_call { connection, command, args, cwd?, format? } runs one once (the person OKs it) so you can see its output.',
+      formats: { json: 'one JSON value, or several in a row (a paginated CLI)', jsonl: 'one JSON value per line', lines: 'plain text, one item per line' },
+    }
   const s = catalogue.find((x) => x.id === c.service)
   const index = c.wayIndex ?? -1
   return {
@@ -619,6 +725,27 @@ async function agentTools(req: Record<string, any>) {
     hosts: hostsOf(c),
     readyMadeSources: index >= 0 ? s?.sources?.[index] ?? [] : [],
   }
+}
+
+// --- logos ------------------------------------------------------------------------------
+
+let logoCache: Record<string, string> | undefined
+
+/** Each service's real logo as a data URI, read once. They're only ever shown in an <img>. */
+function logos() {
+  if (logoCache) return logoCache
+  const types: Record<string, string> = { svg: 'image/svg+xml', png: 'image/png' }
+  logoCache = {}
+  for (const s of catalogue) {
+    const ext = s.logo?.split('.').pop() ?? ''
+    if (!s.logo || !types[ext] || s.logo.includes('/') || s.logo.includes('\\')) continue
+    try {
+      logoCache[s.id] = `data:${types[ext]};base64,${readFileSync(join(servicesDir(), 'logos', s.logo)).toString('base64')}`
+    } catch {
+      /* no logo: it shows its initial */
+    }
+  }
+  return logoCache
 }
 
 // --- wiring -------------------------------------------------------------------------------
@@ -659,6 +786,7 @@ export function wireConnections(win: () => BrowserWindow | undefined) {
       }
     })
   ipcMain.handle('connections:list', () => connectionsState())
+  ipcMain.handle('connections:logos', () => logos())
   h('add', (service: string, way?: number) => addService(String(service), 'person', { way: typeof way === 'number' ? way : undefined }).id)
   h('use-way', (id: string, index: number) => useWay(String(id), Number(index)))
   h('remove', (id: string) => removeConnection(String(id)))

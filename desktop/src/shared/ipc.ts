@@ -121,7 +121,7 @@ export interface MineApi {
     /** Tell main which of mine's own features exist, so the router and agents can use them. */
     registerApp(infos: AppCommandInfo[]): Promise<void>
     /** Main (for an agent) asking this window to run one of mine's own features. */
-    onInvoke(cb: (req: { id: number; name: string; params: Record<string, string>; said: string }) => void): Unsubscribe
+    onInvoke(cb: (req: { id: number; name: string; params: Record<string, string>; said: string; nested?: boolean }) => void): Unsubscribe
     invokeDone(id: number, result: CommandResult): Promise<void>
     onChange(cb: (s: CommandsState) => void): Unsubscribe
     onEffect(cb: (e: CommandEffect) => void): Unsubscribe
@@ -170,6 +170,8 @@ export interface MineApi {
   connections: {
     list(): Promise<ConnectionsState>
     onChange(cb: (s: ConnectionsState) => void): Unsubscribe
+    /** Each of mine's services' logos, by service id, as data URIs. */
+    logos(): Promise<Record<string, string>>
     /** Put one of mine's services on the checklist; answers its connection id. */
     add(service: string, way?: number): Promise<Answer<string>>
     useWay(id: string, way: number): Promise<Answer>

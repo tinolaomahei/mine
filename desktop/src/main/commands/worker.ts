@@ -8,6 +8,7 @@ import { dirname } from 'node:path'
 import type { CommandInfo, CommandParam } from '@shared/commands'
 
 type Ctx = Record<string, unknown>
+type Frame = { chain: string[]; deadline: number }
 type Def = {
   title?: string
   description?: string
@@ -21,8 +22,8 @@ type In =
   /** Only approved files, with the exact source that was approved. */
   | { type: 'load'; id: number; files: { name: string; file: string; source: string }[] }
   | { type: 'options'; id: number; name: string; param: string; ctx: Ctx }
-  | { type: 'run'; id: number; name: string; ctx: Ctx }
-  | { type: 'undo'; id: number; name: string; state: unknown; ctx: Ctx }
+  | { type: 'run'; id: number; name: string; ctx: Ctx; frame: Frame }
+  | { type: 'undo'; id: number; name: string; state: unknown; ctx: Ctx; frame: Frame }
   | { type: 'answer'; cid: number; ok: boolean; value?: unknown; error?: string }
 
 const defs = new Map<string, Def>()
@@ -61,6 +62,12 @@ const mine = {
       )
     }),
 }
+
+const mineFor = (frame: Frame) => ({
+  ...mine,
+  run: (command: string, params?: Record<string, unknown>) => host('run', 'run', [command, params ?? {}, frame]),
+  options: (command: string, param: string) => host('options', 'get', [command, param]),
+})
 
 // --- loading -----------------------------------------------------------------
 
@@ -150,11 +157,11 @@ process.parentPort.on('message', async (e: { data: In }) => {
       const fn = def(m.name).params?.[m.param]?.options
       return reply(toOptions(typeof fn === 'function' ? await fn(m.ctx) : fn))
     }
-    if (m.type === 'run') return reply((await def(m.name).run!(m.ctx, mine)) ?? {})
+    if (m.type === 'run') return reply((await def(m.name).run!(m.ctx, mineFor(m.frame))) ?? {})
     if (m.type === 'undo') {
       const d = def(m.name)
       if (typeof d.undo !== 'function') throw new Error('This command can’t be undone.')
-      return reply((await d.undo(m.state, m.ctx, mine)) ?? {})
+      return reply((await d.undo(m.state, m.ctx, mineFor(m.frame))) ?? {})
     }
   } catch (err) {
     post({ type: 'reply', id: m.id, ok: false, error: (err as Error)?.message ?? String(err) })

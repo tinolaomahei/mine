@@ -33,5 +33,6 @@
         "account": "emailAddress"
       }
     }
-  ]
+  ],
+  "logo": "gmail.svg"
 }

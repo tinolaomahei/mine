@@ -14,5 +14,6 @@
       "auth": "oauth",
       "label": "Sign in with ClickUp"
     }
-  ]
+  ],
+  "logo": "clickup.svg"
 }

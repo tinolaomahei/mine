@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 // The way to every screen, from the title bar: open one, make one, rename or
 // delete one, or go to the widget marketplace.
 
-export type Stage = { kind: 'screen'; id: string } | { kind: 'market' }
+export type Stage = { kind: 'screen'; id: string } | { kind: 'market' } | { kind: 'setup' }
 
 const row =
   'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[0.9375rem] transition-colors duration-100 hover:bg-paper-2 focus-visible:bg-paper-2 focus-visible:outline-none'
@@ -37,7 +37,7 @@ export function ScreenSwitcher({
   const [name, setName] = useState('')
   const [confirm, setConfirm] = useState<string | null>(null)
   const current = stage?.kind === 'screen' ? screens.find((s) => s.id === stage.id) : undefined
-  const label = !showing ? 'Screens' : stage?.kind === 'market' ? 'Marketplace' : (current?.name ?? 'Screens')
+  const label = !showing ? 'Screens' : stage?.kind === 'market' ? 'Marketplace' : stage?.kind === 'setup' ? 'Your tools' : (current?.name ?? 'Screens')
   const go = (fn: () => void) => {
     setOpen(false)
     fn()

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
-import { ArrowUp, Check, ExternalLink, KeyRound, Loader2, RefreshCw, ShieldCheck, X } from 'lucide-react'
-import { stepDone, stepsLeft, type Connection, type ConnectionsState, type Field, type ServiceInfo, type SourceInfo, type Step } from '@shared/connections'
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
+import { ArrowLeft, ArrowRight, ArrowUp, Check, ExternalLink, KeyRound, Loader2, RefreshCw, ShieldCheck, X } from 'lucide-react'
+import { commandLine, isCommandCall, isToolCall, stepDone, stepsLeft, type CommandCall, type Connection, type ConnectionsState, type Field, type ServiceInfo, type SourceInfo, type Step } from '@shared/connections'
 import type { Answer } from '@shared/ipc'
+import { setupLeft, useLogos } from '@/lib/useConnections'
 import { cn } from '@/lib/utils'
 
 // Connecting the tools the person uses: each connection is a checklist of
@@ -23,8 +24,21 @@ function textOn(hex?: string) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#141414' : '#ffffff'
 }
 
-/** A service's mark: its initial on its own colour. */
-export function Mark({ name, colour, className }: { name: string; colour?: string; className?: string }) {
+/**
+ * A service's mark: its real logo on a light tile, like an app icon (light in
+ * dark mode too, so black logos like GitHub's and Notion's still show). A
+ * connection mine doesn't know shows its initial on its own colour.
+ */
+export function Mark({ name, colour, logo, className }: { name: string; colour?: string; logo?: string; className?: string }) {
+  if (logo)
+    return (
+      <span
+        aria-hidden="true"
+        className={cn('grid size-9 shrink-0 place-items-center overflow-hidden rounded-[calc(var(--radius)*0.75)] bg-[#fff] ring-1 ring-rule/80', className)}
+      >
+        <img src={logo} alt="" draggable={false} className={logo.startsWith('data:image/png') ? 'size-full object-contain p-[3px]' : 'size-[58%] object-contain'} />
+      </span>
+    )
   const bg = colour ?? 'var(--solid)'
   return (
     <span
@@ -48,6 +62,7 @@ const ago = (t?: number) => {
 
 /** Where the person's details are ever sent, in their words. */
 function whereTo(c: Connection) {
+  if (c.way.kind === 'local') return []
   if (c.way.kind === 'mcp') return [new URL(c.way.url).host]
   return c.way.hosts
     .map((h) => {
@@ -138,7 +153,7 @@ function FieldStep({ c, field }: { c: Connection; field: Field }) {
   )
 }
 
-function StepRow({ c, step, n, onAction }: { c: Connection; step: Step; n: number; onAction: ReturnType<typeof useAction> }) {
+function StepRow({ c, step, n, onAction, closed }: { c: Connection; step: Step; n: number; onAction: ReturnType<typeof useAction>; closed?: string }) {
   const done = stepDone(c, step)
   const field = step.kind === 'field' ? (c.way.auth === 'fields' ? c.way.fields.find((f) => f.key === step.field) : undefined) : undefined
   const { busy, run } = onAction
@@ -201,6 +216,8 @@ function StepRow({ c, step, n, onAction }: { c: Connection; step: Step; n: numbe
                   Cancel
                 </button>
               </>
+            ) : closed ? (
+              <p className="text-[0.8125rem] leading-snug text-muted-foreground">{closed}</p>
             ) : (
               <button type="button" onClick={() => void run('signin', window.mine.connections.signIn(c.id))} disabled={busy === 'signin'} className={primary}>
                 {step.label}
@@ -226,22 +243,58 @@ function StepRow({ c, step, n, onAction }: { c: Connection; step: Step; n: numbe
 
 // --- sources ---------------------------------------------------------------------------
 
+function CallShown({ call }: { call: Exclude<SourceInfo['call'], CommandCall> }) {
+  const text = isToolCall(call) ? `${call.tool}${call.args && Object.keys(call.args).length ? ` ${JSON.stringify(call.args)}` : ''}` : `GET ${call.path || '(the address)'}`
+  return (
+    <p className="mt-1.5 truncate font-mono text-[11px] text-muted-foreground" title={text}>
+      {text}
+    </p>
+  )
+}
+
+function CommandShown({ call }: { call: CommandCall }) {
+  return (
+    <div className="mt-2">
+      <pre className="scroll-soft max-h-32 overflow-auto rounded-lg bg-code-bg px-3 py-2 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all text-code-fg select-text">
+        {commandLine(call)}
+      </pre>
+      <details className="mt-1.5 text-[0.75rem] text-muted-foreground">
+        <summary className="cursor-pointer break-words select-none">
+          {call.command} with {call.args.length} {call.args.length === 1 ? 'argument' : 'arguments'}, in {call.cwd ?? 'your home folder'}, read as {call.format ?? 'json'}
+        </summary>
+        <ol className="mt-1 flex flex-col gap-0.5 pl-1">
+          {call.args.map((a, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="w-5 shrink-0 text-right font-mono text-[10.5px] text-neutral">{i + 1}</span>
+              <code className="font-mono text-[11.5px] break-all text-ink">{a === '' ? '(empty)' : a}</code>
+            </li>
+          ))}
+        </ol>
+      </details>
+    </div>
+  )
+}
+
 function SourceRow({ s, c }: { s: SourceInfo; c: Connection }) {
   const { busy, error, run } = useAction()
   const where = WIDGET_FOR[s.into] ? `the ${WIDGET_FOR[s.into]} widget` : `the “${s.into}” collection`
-  const call = 'tool' in s.call ? `${s.call.tool}${s.call.args && Object.keys(s.call.args).length ? ` ${JSON.stringify(s.call.args)}` : ''}` : `GET ${s.call.path || '(the address)'}`
+  const local = isCommandCall(s.call)
   if (!s.approved)
     return (
-      <div role="group" aria-label={`${s.title}, waiting for your OK`} className="rounded-lg border border-bloom-deep/40 bg-bloom-wash/40 p-3">
+      <div role="group" aria-label={`${s.title}, waiting for your OK`} className="min-w-0 rounded-lg border border-bloom-deep/40 bg-bloom-wash/40 p-3">
         <p className="text-[0.875rem] font-semibold">{s.title}</p>
         <p className="mt-0.5 font-serif text-[0.875rem] leading-snug">
-          {s.by === 'agent' ? 'Your agent wants' : 'This wants'} to read {c.name} every {s.every} minutes and show it in {where}. {s.what}
+          {s.by === 'agent' ? 'Your agent wants' : 'This wants'} to {local ? 'run a program on this computer' : `read ${c.name}`} every {s.every} minutes and show what it
+          finds in {where}. {s.what}
         </p>
-        <p className="mt-1.5 truncate font-mono text-[11px] text-muted-foreground" title={call}>
-          {call}
-        </p>
+        {isCommandCall(s.call) ? <CommandShown call={s.call} /> : <CallShown call={s.call} />}
         {s.readOnly === false && <p className="mt-1.5 text-[0.8125rem] font-semibold text-signal">{c.name} says this tool can change things in your account.</p>}
-        {s.readOnly === null && <p className="mt-1.5 text-[0.8125rem] text-muted-foreground">{c.name} doesn’t say whether this only reads. Only approve it if you’re happy for it to run on its own.</p>}
+        {s.readOnly === null && !local && <p className="mt-1.5 text-[0.8125rem] text-muted-foreground">{c.name} doesn’t say whether this only reads. Only approve it if you’re happy for it to run on its own.</p>}
+        {local && (
+          <p className="mt-1.5 text-[0.8125rem] leading-snug text-muted-foreground">
+            It runs with the same access you have, on its own, every {s.every} minutes. Only approve it if you know what this command does.
+          </p>
+        )}
         <div className="mt-2.5 flex gap-2">
           <button type="button" onClick={() => void run('ok', window.mine.connections.approveSource(s.id))} className={primary}>
             <ShieldCheck className="size-3.5" /> Approve
@@ -300,6 +353,7 @@ function Status({ c }: { c: Connection }) {
 
 export function ConnectionCard({ c, service, sources }: { c: Connection; service?: ServiceInfo; sources: SourceInfo[] }) {
   const action = useAction()
+  const logos = useLogos()
   const [removing, setRemoving] = useState(false)
   const [open, setOpen] = useState(c.status !== 'connected')
   useEffect(() => {
@@ -308,13 +362,15 @@ export function ConnectionCard({ c, service, sources }: { c: Connection; service
   const mine = sources.filter((s) => s.connection === c.id)
   const offered = (c.wayIndex != null ? service?.sources?.[c.wayIndex] ?? [] : []).filter((d) => !mine.some((s) => s.title === d.title))
   const otherWays = (service?.ways ?? []).filter((w) => w.index !== c.wayIndex)
+  // signing in isn't open until mine is registered with the service
+  const wayNow = service?.ways.find((w) => w.index === c.wayIndex)
   const where = whereTo(c)
   const waiting = mine.filter((s) => !s.approved).length
 
   return (
-    <article aria-label={`${c.name} connection`} className="rounded-xl border border-rule bg-surface">
+    <article aria-label={`${c.name} connection`} className="min-w-0 rounded-xl border border-rule bg-surface">
       <header className="flex items-center gap-3 p-4 pb-3">
-        <Mark name={c.name} colour={c.colour} />
+        <Mark name={c.name} colour={c.colour} logo={c.service ? logos[c.service] : undefined} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
             <h3 className="truncate font-display text-[1.0625rem] font-semibold tracking-[-0.015em]">{c.name}</h3>
@@ -356,13 +412,15 @@ export function ConnectionCard({ c, service, sources }: { c: Connection; service
           {c.status === 'connected' && c.why && <p className="mb-3 font-serif text-[0.9375rem] leading-snug text-muted-foreground">{c.why}</p>}
           <ol className="flex flex-col gap-3">
             {c.steps.map((s, i) => (
-              <StepRow key={s.id} c={c} step={s} n={i + 1} onAction={action} />
+              <StepRow key={s.id} c={c} step={s} n={i + 1} onAction={action} closed={wayNow?.ready === false ? wayNow.why : undefined} />
             ))}
           </ol>
           {(action.error || c.error) && <p className="mt-3 text-[0.8125rem] leading-snug text-signal">{action.error ?? c.error}</p>}
           <p className="mt-3 flex items-start gap-1.5 text-[0.75rem] leading-snug text-muted-foreground">
             <ShieldCheck className="mt-px size-3.5 shrink-0" />
-            {c.way.auth === 'oauth'
+            {c.way.kind === 'local'
+              ? 'Each sync runs a program on this computer, with your access. You see and approve the exact command first, and again if it ever changes.'
+              : c.way.auth === 'oauth'
               ? `You sign in on ${c.name}’s own page. mine keeps the access it gives encrypted on this computer, and only uses it with ${where.join(', ')}.`
               : `What you paste is kept encrypted on this computer and only ever sent to ${where.join(', ')}. Agents never see it.`}
           </p>
@@ -419,7 +477,7 @@ export function SetupChecklist({ state, columns }: { state: ConnectionsState; co
   const order = (c: Connection) => (c.status === 'connected' ? (state.sources.some((s) => s.connection === c.id && !s.approved) ? 1 : 2) : 0)
   const list = [...state.connections].sort((a, b) => order(a) - order(b) || a.createdAt - b.createdAt)
   return (
-    <div className={cn('grid gap-3', columns && 'lg:grid-cols-2 lg:items-start')}>
+    <div className={cn('grid grid-cols-[minmax(0,1fr)] gap-3', columns && 'lg:grid-cols-[repeat(2,minmax(0,1fr))] lg:items-start')}>
       {list.map((c) => (
         <ConnectionCard key={c.id} c={c} service={state.services.find((s) => s.id === c.service)} sources={state.sources} />
       ))}
@@ -435,7 +493,10 @@ const EXAMPLES = [
   'Product manager. Linear for work, Notion for docs, Outlook for meetings.',
 ]
 
-/** An empty screen: tell mine about your day, and it works out what to connect. */
+/**
+ * An empty screen: tell mine about your day, and it works out what to connect.
+ * The same page, with a way back, is "Your tools" for a screen that has widgets.
+ */
 export function ScreenStart({
   name,
   state,
@@ -443,6 +504,7 @@ export function ScreenStart({
   onTell,
   onBrowse,
   onConnect,
+  onBack,
 }: {
   name: string
   state: ConnectionsState | null
@@ -450,6 +512,8 @@ export function ScreenStart({
   onTell: (text: string) => void
   onBrowse: () => void
   onConnect: () => void
+  /** On the tools page: back to the screen it came from. */
+  onBack?: () => void
 }) {
   const [text, setText] = useState('')
   const local = useRef<HTMLTextAreaElement>(null)
@@ -466,18 +530,31 @@ export function ScreenStart({
     }
   }
   const has = !!state?.connections.length
+  const done = has && setupLeft(state).total === 0
 
   return (
     <div className="scroll-soft h-full overflow-y-auto">
-      <div className="mx-auto max-w-[44rem] px-6 pt-[clamp(2rem,9vh,6rem)] pb-36">
-        <p className="font-mono text-[10.5px] text-neutral uppercase">Setting up {name}</p>
+      <div className={cn('mx-auto max-w-[44rem] px-6 pb-36', onBack ? 'pt-8' : 'pt-[clamp(2rem,9vh,6rem)]')}>
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="-ml-1 inline-flex items-center gap-1.5 rounded-full px-1 py-0.5 font-mono text-[10.5px] text-neutral uppercase transition-colors hover:text-ink"
+          >
+            <ArrowLeft className="size-3.5" /> Back to {name}
+          </button>
+        ) : (
+          <p className="font-mono text-[10.5px] text-neutral uppercase">Setting up {name}</p>
+        )}
         <h2 className="mt-3 font-display text-[clamp(2rem,1.5rem+1.8vw,2.75rem)] leading-[1.02] font-semibold tracking-[-0.04em]">
-          {has ? 'Here’s what to connect.' : 'Tell mine about your day.'}
+          {done ? 'Your tools are connected.' : has ? 'Here’s what to connect.' : 'Tell mine about your day.'}
         </h2>
         <p className="mt-3 max-w-[36rem] font-serif text-[1.0625rem] leading-snug text-muted-foreground">
-          {has
-            ? 'Work through each one below. When a tool’s connected, mine fills this screen with widgets that use your real data.'
-            : 'What do you do, and which tools does your team use? mine works out what to connect, shows you exactly what to do for each one, then fills this screen with widgets that use your real data.'}
+          {done
+            ? 'Their data keeps flowing into your widgets. Tell mine about anything else you use, or ask for a widget built around what’s here.'
+            : has
+              ? `Work through each one below. When a tool’s connected, mine fills ${onBack ? name : 'this screen'} with widgets that use your real data.`
+              : 'What do you do, and which tools does your team use? mine works out what to connect, shows you exactly what to do for each one, then fills this screen with widgets that use your real data.'}
         </p>
 
         <div className="mt-6 rounded-xl border border-rule bg-surface p-2 focus-within:border-bloom-deep/60">
@@ -560,6 +637,7 @@ const GROUPS: ServiceInfo['group'][] = ['Work', 'Code', 'Docs', 'Messages', 'Cal
 
 export function ServiceShelf({ state, onAdded }: { state: ConnectionsState; onAdded?: (id: string) => void }) {
   const { error, run } = useAction()
+  const logos = useLogos()
   const grid = 'grid grid-cols-[repeat(auto-fill,minmax(min(100%,16rem),1fr))] gap-3'
   return (
     <>
@@ -587,7 +665,7 @@ export function ServiceShelf({ state, onAdded }: { state: ConnectionsState; onAd
                 return (
                   <article key={s.id} aria-label={s.name} className="flex flex-col rounded-xl border border-rule bg-surface p-4">
                     <div className="flex items-center gap-3">
-                      <Mark name={s.name} colour={s.colour} />
+                      <Mark name={s.name} colour={s.colour} logo={logos[s.id]} />
                       <div className="min-w-0">
                         <h3 className="truncate font-display text-[1rem] font-semibold tracking-[-0.015em]">{s.name}</h3>
                         <p className="truncate text-[0.8125rem] text-muted-foreground">{s.what}</p>
@@ -636,34 +714,46 @@ export function ServiceShelf({ state, onAdded }: { state: ConnectionsState; onAd
   )
 }
 
-/** A sheet over a busy screen, with the checklist. */
-export function SetupSheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    ref.current?.focus()
-    const onKey = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-  if (!open) return null
+/**
+ * A slim note at the top of a screen that has widgets but tools still to
+ * connect. It sits in the page, above the widgets, and moves nothing.
+ */
+export function SetupNotice({ state, onOpen, onLater }: { state: ConnectionsState; onOpen: () => void; onLater: () => void }) {
+  const logos = useLogos()
+  const left = setupLeft(state)
+  if (!left.total) return null
+  const todo = state.connections.filter((c) => c.status !== 'connected')
+  const what = [
+    left.connections ? `${left.connections} ${left.connections === 1 ? 'tool' : 'tools'} to connect` : '',
+    left.sources ? `${left.sources} ${left.sources === 1 ? 'sync' : 'syncs'} waiting for your OK` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
   return (
-    <aside
-      ref={ref}
-      tabIndex={-1}
-      aria-label="Connections"
-      className="scroll-soft absolute inset-y-0 left-0 z-30 flex w-[min(100%,27rem)] flex-col overflow-y-auto border-r border-rule bg-paper outline-none"
-    >
-      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-paper/95 px-5 pt-5 pb-3 backdrop-blur-sm">
-        <div>
-          <h2 className="font-display text-[1.375rem] leading-tight font-semibold tracking-[-0.03em]">Your tools</h2>
-          <p className="text-[0.8125rem] text-muted-foreground">What’s connected, and what’s left to do.</p>
+    <div className="px-5 pt-5">
+      <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-rule bg-surface px-4 py-2.5">
+        {todo.length > 0 && (
+          <span className="flex -space-x-1.5" aria-hidden="true">
+            {todo.slice(0, 4).map((c) => (
+              <Mark key={c.id} name={c.name} colour={c.colour} logo={c.service ? logos[c.service] : undefined} className="size-7 ring-2 ring-surface" />
+            ))}
+          </span>
+        )}
+        <p className="min-w-0 flex-1 text-[0.875rem]">
+          <span className="font-semibold">{what}.</span>{' '}
+          <span className="text-muted-foreground">
+            {todo.length ? `${todo.map((c) => c.name).join(', ')} ${todo.length === 1 ? 'isn’t' : 'aren’t'} feeding your widgets yet.` : 'Your widgets fill in once you OK them.'}
+          </span>
+        </p>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={onLater} className="h-8 rounded-full px-3 text-[0.8125rem] font-semibold text-muted-foreground hover:bg-paper-2 hover:text-ink">
+            Later
+          </button>
+          <button type="button" onClick={onOpen} className={primary}>
+            Continue setup <ArrowRight className="size-3.5" />
+          </button>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 place-items-center rounded-full text-neutral hover:bg-paper-2 hover:text-ink">
-          <X className="size-4" />
-        </button>
       </div>
-      <div className="px-5 pb-28">{children}</div>
-    </aside>
+    </div>
   )
 }

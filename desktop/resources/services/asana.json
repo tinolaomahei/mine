@@ -49,5 +49,6 @@
         "detail": "Choose Create new token and copy it."
       }
     ]
-  }
+  },
+  "logo": "asana.svg"
 }

@@ -38,6 +38,7 @@ export function ScreenGrid({
   onRemoveItem,
   onBrowse,
   intro,
+  notice,
 }: {
   screen: Screen
   onItems: (items: ScreenItem[]) => void
@@ -45,6 +46,8 @@ export function ScreenGrid({
   onBrowse: () => void
   /** What an empty screen shows instead of the grid: how to set it up. */
   intro?: ReactNode
+  /** A slim note above the widgets, e.g. tools still to connect. */
+  notice?: ReactNode
 }) {
   const { widgets } = useAbilities()
   const box = useRef<HTMLDivElement>(null)
@@ -211,6 +214,7 @@ export function ScreenGrid({
 
   return (
     <div ref={box} className="scroll-soft h-full overflow-y-auto" aria-label={`${screen.name}, a screen of widgets`}>
+      {notice}
       <div className={cn('relative', live && '[&_iframe]:pointer-events-none')} style={{ height, minHeight: '100%' }}>
         {/* column guides while arranging */}
         <div

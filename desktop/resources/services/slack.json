@@ -15,5 +15,6 @@
       "label": "Sign in with Slack",
       "client": "slack"
     }
-  ]
+  ],
+  "logo": "slack.svg"
 }

@@ -14,5 +14,6 @@
       "auth": "oauth",
       "label": "Sign in with Linear"
     }
-  ]
+  ],
+  "logo": "linear.svg"
 }

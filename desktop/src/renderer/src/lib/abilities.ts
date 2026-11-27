@@ -17,6 +17,19 @@ export type AppOutcome = {
 
 export type AppCommand = AppCommandInfo & { run: (params: Record<string, string>, said: string) => AppOutcome | Promise<AppOutcome> }
 
+let hush = 0
+
+export const hushed = () => hush > 0
+
+async function quietly<T>(nested: boolean, fn: () => Promise<T>): Promise<T> {
+  if (nested) hush++
+  try {
+    return await fn()
+  } finally {
+    if (nested) hush--
+  }
+}
+
 /** Register mine's own commands with main and answer agents that run them. */
 export function useAppCommands(cmds: AppCommand[]) {
   const ref = useRef(cmds)
@@ -29,12 +42,12 @@ export function useAppCommands(cmds: AppCommand[]) {
 
   useEffect(
     () =>
-      window.mine.commands.onInvoke(async ({ id, name, params, said }) => {
+      window.mine.commands.onInvoke(async ({ id, name, params, said, nested }) => {
         const t0 = performance.now()
         try {
           const c = ref.current.find((x) => x.name === name)
           if (!c) throw new Error(`mine has no ${name} right now.`)
-          const out = await c.run(params ?? {}, said)
+          const out = await quietly(!!nested, async () => c.run(params ?? {}, said))
           await window.mine.commands.invokeDone(id, { ok: true, say: out.say, view: out.view, canUndo: false, ms: Math.round(performance.now() - t0) })
         } catch (err) {
           await window.mine.commands.invokeDone(id, { ok: false, error: (err as Error).message })

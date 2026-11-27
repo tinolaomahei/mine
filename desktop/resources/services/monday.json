@@ -14,5 +14,6 @@
       "auth": "oauth",
       "label": "Sign in with monday.com"
     }
-  ]
+  ],
+  "logo": "monday.png"
 }

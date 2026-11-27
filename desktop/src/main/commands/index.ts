@@ -121,6 +121,10 @@ async function hostCall(area: string, method: string, args: unknown[]): Promise<
       if (method === 'stop') return effect({ type: 'stop-agent' })
       if (method === 'send') return effect({ type: 'send-to-agent', text: String(args[0] ?? '') })
       break
+    case 'run':
+      return runNested(String(args[0] ?? ''), toParams(args[1]), toFrame(args[2]))
+    case 'options':
+      return paramOptions(String(args[0] ?? ''), String(args[1] ?? ''))
   }
   throw new Error(`mine.${area}.${method}() isn’t something mine can do.`)
 }
@@ -256,30 +260,104 @@ function checkView(v: unknown): CommandView | undefined {
 let nextInvoke = 1
 const invoking = new Map<number, (r: CommandResult) => void>()
 
-function invokeApp(name: string, params: Record<string, string>, said: string): Promise<CommandResult> {
+function invokeApp(name: string, params: Record<string, string>, said: string, frame: Frame): Promise<CommandResult> {
   const w = getWin()
   if (!w || w.isDestroyed()) return Promise.resolve({ ok: false, error: 'mine’s window isn’t open.' })
   const id = nextInvoke++
+  const nested = frame.chain.length > 1
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       invoking.delete(id)
       resolve({ ok: false, error: 'mine’s window didn’t respond.' })
-    }, RUN_MS)
+    }, timeLeft(frame))
     invoking.set(id, (r) => (clearTimeout(timer), resolve(r)))
-    w.webContents.send('commands:invoke', { id, name, params, said })
+    w.webContents.send('commands:invoke', { id, name, params, said, nested })
   })
 }
 
 /** Every command, mine's own first. */
 export const allCommands = () => [...state.app, ...state.commands]
 
-export async function runCommand(name: string, params: Record<string, string>, said = ''): Promise<CommandResult> {
-  if (state.app.some((c) => c.name === name)) return invokeApp(name, params, said)
-  const info = state.commands.find((c) => c.name === name)
+type Frame = { chain: string[]; deadline: number }
+
+const MAX_DEPTH = 3
+const timeLeft = (f: Frame) => Math.max(0, f.deadline - Date.now())
+const outerFrame = (name: string): Frame => ({ chain: [name], deadline: Date.now() + RUN_MS })
+
+function toFrame(v: unknown): Frame {
+  const f = (v && typeof v === 'object' ? v : {}) as Partial<Frame>
+  const chain = Array.isArray(f.chain) ? f.chain.map(String) : []
+  return { chain, deadline: typeof f.deadline === 'number' ? f.deadline : Date.now() + RUN_MS }
+}
+
+function toParams(v: unknown): Record<string, string> {
+  if (v == null) return {}
+  if (typeof v !== 'object' || Array.isArray(v)) throw new Error('params is an object, like { widget: "clock.native" }.')
+  const out: Record<string, string> = {}
+  for (const [k, x] of Object.entries(v)) {
+    if (x != null && typeof x === 'object') throw new Error(`${k} must be text, not an object.`)
+    if (x != null) out[k] = String(x)
+  }
+  return out
+}
+
+function checkParams(info: CommandInfo | AppCommandInfo, params: Record<string, string>) {
+  for (const [key, value] of Object.entries(params)) {
+    const p = info.params[key]
+    if (!p || p.dynamic || p.text || !p.options || p.options.some((o) => o.value === value)) continue
+    const values = p.options.map((o) => o.value)
+    throw new Error(`${key} must be one of ${values.slice(0, 12).join(', ')}${values.length > 12 ? ', …' : ''}.`)
+  }
+}
+
+function refusal(name: string, frame: Frame): string | undefined {
+  if (frame.chain.at(-1) === name) return 'A command can’t run itself.'
+  if (frame.chain.includes(name)) return `${name} is already running, so it can’t run again from inside itself.`
+  if (frame.chain.length > MAX_DEPTH) return `mine.run can only go ${MAX_DEPTH} commands deep.`
+  if (!timeLeft(frame)) return 'Out of time: the whole command has 15 seconds.'
+  if (state.pending.some((p) => p.name === name)) return `${name} is waiting for the person’s approval, so it can’t run yet.`
+  if (!allCommands().some((c) => c.name === name)) return `Unknown command: ${name}`
+  return undefined
+}
+
+async function runNested(name: string, params: Record<string, string>, frame: Frame) {
+  const no = refusal(name, frame)
+  if (no) throw new Error(no)
+  const r = await execute(name, params, '', { chain: [...frame.chain, name], deadline: frame.deadline })
+  if (!r.ok) throw new Error(r.error)
+  return { say: r.say, view: r.view }
+}
+
+async function paramOptions(name: string, param: string) {
+  const info = allCommands().find((c) => c.name === name)
+  if (!info) throw new Error(`Unknown command: ${name}`)
+  const p = info.params[param]
+  if (!p) throw new Error(`${name} has no ${param} parameter.`)
+  if (p.dynamic) return commandOptions(name, param, '')
+  return p.options ?? []
+}
+
+export function runCommand(name: string, params: Record<string, string>, said = ''): Promise<CommandResult> {
+  return execute(name, params, said, outerFrame(name))
+}
+
+async function execute(name: string, params: Record<string, string>, said: string, frame: Frame): Promise<CommandResult> {
+  const info = allCommands().find((c) => c.name === name)
   if (!info) return { ok: false, error: `There's no command called ${name}.` }
+  try {
+    checkParams(info, params)
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+  if (info.source === 'app') return invokeApp(name, params, said, frame)
+  return runSaved(info, params, said, frame)
+}
+
+async function runSaved(info: CommandInfo, params: Record<string, string>, said: string, frame: Frame): Promise<CommandResult> {
+  const name = info.name
   const t0 = performance.now()
   try {
-    const out = (await ask<Record<string, unknown>>({ type: 'run', name, ctx: runCtx(params, said) }, RUN_MS)) ?? {}
+    const out = (await ask<Record<string, unknown>>({ type: 'run', name, ctx: runCtx(params, said), frame }, timeLeft(frame))) ?? {}
     return {
       ok: true,
       say: typeof out.say === 'string' ? out.say : undefined,
@@ -295,7 +373,8 @@ export async function runCommand(name: string, params: Record<string, string>, s
 
 export async function undoCommand(name: string, undoState: unknown) {
   try {
-    const out = (await ask<Record<string, unknown>>({ type: 'undo', name, state: undoState, ctx: runCtx({}, '') }, RUN_MS)) ?? {}
+    const frame = outerFrame(name)
+    const out = (await ask<Record<string, unknown>>({ type: 'undo', name, state: undoState, ctx: runCtx({}, ''), frame }, timeLeft(frame))) ?? {}
     return { ok: true as const, say: typeof out.say === 'string' ? out.say : undefined }
   } catch (err) {
     return { ok: false as const, error: (err as Error).message }

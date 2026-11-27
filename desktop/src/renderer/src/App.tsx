@@ -12,7 +12,7 @@ import { ChatDock, DockComposer, type DockState } from '@/components/ChatDock'
 import { Conversation } from '@/components/Conversation'
 import { Marketplace, type MarketFilter, type MarketKind } from '@/components/Marketplace'
 import { ThemeShelf } from '@/components/ThemeShelf'
-import { ScreenStart, ServiceShelf, SetupChecklist, SetupSheet } from '@/components/Connections'
+import { ScreenStart, ServiceShelf, SetupNotice } from '@/components/Connections'
 import { setupLeft, useConnections } from '@/lib/useConnections'
 import { ScreenGrid } from '@/components/ScreenGrid'
 import { ScreenSwitcher, type Stage } from '@/components/ScreenSwitcher'
@@ -28,7 +28,7 @@ import { ThemeToast } from '@/components/ThemeToast'
 import { TitleBar } from '@/components/TitleBar'
 import { TypeWay } from '@/components/TypeWay'
 import { VoiceWay } from '@/components/VoiceWay'
-import { AbilitiesContext, useAppCommands, type Abilities, type AppCommand } from '@/lib/abilities'
+import { AbilitiesContext, hushed, useAppCommands, type Abilities, type AppCommand } from '@/lib/abilities'
 import { stopIntent } from '@/lib/intent'
 import { useConversation } from '@/lib/useConversation'
 import { useSpeech } from '@/lib/useSpeech'
@@ -106,6 +106,7 @@ export default function App() {
   const [flash, setFlash] = useState<string | null>(null)
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const say = (text: string) => {
+    if (hushed()) return
     setFlash(text)
     clearTimeout(flashTimer.current)
     flashTimer.current = setTimeout(() => setFlash(null), 4000)
@@ -180,7 +181,8 @@ export default function App() {
   // the tools the person uses every day, and what's left to connect
   const conns = useConnections()
   const left = setupLeft(conns)
-  const [sheet, setSheet] = useState(false)
+  // "Later" on a screen's setup notice, until something new needs doing
+  const [later, setLater] = useState(false)
   const startRef = useRef<HTMLTextAreaElement>(null)
   const docked = useRef<DockState>(remembered<DockState>('mine.dock', 'button'))
   const chatRef = useRef(chat)
@@ -244,16 +246,24 @@ export default function App() {
     return { screen: dest, item: item!, widget: w }
   }
 
-  /** Show the connection checklist: on an empty screen it's the page; on a busy one, a sheet. */
-  const revealSetupRef = useRef(() => {})
-  revealSetupRef.current = () => {
+  /** The tools page: the whole checklist, in place of the screen, with a way back. */
+  const openTools = () => showStage({ kind: 'setup' })
+
+  /**
+   * Show the connection checklist. On an empty screen it's the screen itself.
+   * Asked for (a command, the title bar), it's the tools page. When an agent
+   * adds something while a busy screen shows, the screen's notice says so and
+   * nothing jumps.
+   */
+  const revealSetupRef = useRef((_asked: boolean) => {})
+  revealSetupRef.current = (asked) => {
+    setLater(false)
     if (chatRef.current === 'full') setChat('window')
-    if (stage?.kind === 'market' && marketKind === 'connections') return
+    if (stage?.kind === 'setup' || (stage?.kind === 'market' && marketKind === 'connections')) return
     if (!screens.length) return openScreen(screensApi.create().id)
     const s = targetScreen()
-    if (s && stage?.kind !== 'screen') openScreen(s.id)
-    if (s && !s.items.length) return
-    setSheet(true)
+    if (s && !s.items.length) return openScreen(s.id)
+    if (asked || stage?.kind !== 'screen') openTools()
   }
 
   // when an agent puts a tool on the list, or wants a sync approved, the person sees it
@@ -266,18 +276,8 @@ export default function App() {
     ]
     const before = seen.current
     seen.current = new Set(items.map((i) => i.key))
-    if (before && items.some((i) => !before.has(i.key) && i.by === 'agent')) revealSetupRef.current()
+    if (before && items.some((i) => !before.has(i.key) && i.by === 'agent')) revealSetupRef.current(false)
   }, [conns])
-
-  // the first widget on a screen that's still being set up takes the checklist's
-  // place, so it moves to the sheet rather than vanish
-  const itemsOnScreen = currentScreen?.items.length ?? -1
-  const lastItems = useRef({ id: currentScreen?.id, n: itemsOnScreen })
-  useEffect(() => {
-    const was = lastItems.current
-    lastItems.current = { id: currentScreen?.id, n: itemsOnScreen }
-    if (was.id === currentScreen?.id && was.n === 0 && itemsOnScreen > 0 && left.total > 0) setSheet(true)
-  }, [currentScreen?.id, itemsOnScreen])
 
   /** From an empty screen: what the person does, straight to their agent. */
   const tellMine = (text: string) => {
@@ -776,7 +776,7 @@ export default function App() {
       params: {},
       canUndo: false,
       run: () => {
-        revealSetupRef.current()
+        revealSetupRef.current(true)
         if (!conns?.connections.length) {
           setMarketKind('connections')
           showStage({ kind: 'market' })
@@ -802,7 +802,7 @@ export default function App() {
               const existed = conns.connections.some((c) => c.service === s.id)
               const r = await window.mine.connections.add(s.id)
               if (!r.ok) throw new Error(r.error)
-              revealSetupRef.current()
+              revealSetupRef.current(true)
               return existed
                 ? { say: `${s.name} is already on your list` }
                 : { say: `Added ${s.name} to your checklist`, undo: () => void window.mine.connections.remove(r.value) }
@@ -828,7 +828,7 @@ export default function App() {
               const c = conns.connections.find((x) => x.id === connection)
               if (!c) throw new Error('That isn’t on your list.')
               void window.mine.connections.signIn(c.id)
-              revealSetupRef.current()
+              revealSetupRef.current(true)
               return { say: `Opening ${c.name} in your browser` }
             },
           } satisfies AppCommand,
@@ -1252,8 +1252,24 @@ export default function App() {
   const note = speech.note ?? flash ?? (convo.queued ? `Up next: ${convo.queued.text}` : null)
 
   // what sits behind the conversation: a screen, the marketplace, or a way to start
+  const backTo = screens.find((s) => s.id === lastScreen.current) ?? screens[0]
   const stageView =
-    stage?.kind === 'market' ? (
+    stage?.kind === 'setup' ? (
+      <ScreenStart
+        name={backTo?.name ?? 'your screen'}
+        state={conns}
+        onTell={tellMine}
+        onBack={() => (backTo ? openScreen(backTo.id) : setStage(null))}
+        onBrowse={() => {
+          setMarketKind('widgets')
+          showStage({ kind: 'market' })
+        }}
+        onConnect={() => {
+          setMarketKind('connections')
+          showStage({ kind: 'market' })
+        }}
+      />
+    ) : stage?.kind === 'market' ? (
       <Marketplace
         widgets={widgets}
         screens={screens}
@@ -1297,6 +1313,7 @@ export default function App() {
         onItems={(items) => screensApi.setItems(currentScreen.id, items)}
         onRemoveItem={(id) => void removeFromScreen(currentScreen.id, id)}
         onBrowse={() => showStage({ kind: 'market' })}
+        notice={conns && !later ? <SetupNotice state={conns} onOpen={openTools} onLater={() => setLater(true)} /> : null}
         intro={
           <ScreenStart
             name={currentScreen.name}
@@ -1387,11 +1404,11 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
-                  if (sheet) return setSheet(false)
-                  revealSetupRef.current()
-                  if (currentScreen?.items.length || stage?.kind !== 'screen') setSheet(true)
+                  // a second click goes back to the screen
+                  if (stage?.kind === 'setup' && !full) return backTo ? openScreen(backTo.id) : undefined
+                  revealSetupRef.current(true)
                 }}
-                aria-expanded={sheet}
+                aria-pressed={stage?.kind === 'setup' && !full}
                 aria-label={left.total ? `Your tools: ${left.total} ${left.total === 1 ? 'thing' : 'things'} to set up` : 'Your tools'}
                 title={left.total ? `${left.total} to set up` : 'Your tools'}
                 className={cn(
@@ -1441,11 +1458,6 @@ export default function App() {
             {(stage || !full) && inApp && (
               <div className={cn('absolute inset-0', full && 'invisible')} inert={full}>
                 {stageView}
-                {conns && (
-                  <SetupSheet open={sheet} onClose={() => setSheet(false)}>
-                    <SetupChecklist state={conns} />
-                  </SetupSheet>
-                )}
               </div>
             )}
             {!full && (

@@ -59,5 +59,6 @@
         "url": "https://id.atlassian.com/manage-profile/security/api-tokens"
       }
     ]
-  }
+  },
+  "logo": "confluence.svg"
 }

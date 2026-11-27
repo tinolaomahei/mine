@@ -58,6 +58,19 @@ export type Way =
       test?: { path: string; account?: string }
       label?: string
     }
+  | { kind: 'local'; auth: 'none'; label?: string }
+
+export type CommandFormat = 'json' | 'jsonl' | 'lines'
+export type CommandCall = { command: string; args: string[]; cwd?: string; format?: CommandFormat }
+export type ToolCall = { tool: string; args?: Record<string, unknown> }
+export type ApiCall = { path: string; query?: Record<string, string>; format?: 'json' | 'ics' }
+
+const quoteArg = (a: string) => (a && !/[\s"'`$&|<>;(){}^%!]/.test(a) ? a : `"${a.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1')}"`)
+
+export const commandLine = (c: { command: string; args: string[] }) => [c.command, ...c.args].map(quoteArg).join(' ')
+
+export const isCommandCall = (c: SourceDef['call']): c is CommandCall => 'command' in c
+export const isToolCall = (c: SourceDef['call']): c is ToolCall => 'tool' in c
 
 /** One thing the person does to connect. mine adds sign-in, fields and the test itself. */
 export type Step = {
@@ -79,6 +92,8 @@ export type ServiceDef = {
   what: string
   group: 'Work' | 'Code' | 'Docs' | 'Calendar' | 'Messages' | 'Design' | 'Business' | 'Automation'
   colour: string
+  /** Its logo, a file in resources/services/logos (see the NOTICE there). */
+  logo?: string
   /** Hosts widgets may open links to (an issue, an event), e.g. ["*.atlassian.net"]. */
   opens?: string[]
   ways: Way[]
@@ -143,7 +158,7 @@ export type SourceDef = {
   title: string
   /** What it fetches, in plain words, for the approval card. */
   what: string
-  call: { tool: string; args?: Record<string, unknown> } | { path: string; query?: Record<string, string>; format?: 'json' | 'ics' }
+  call: ToolCall | ApiCall | CommandCall
   /** Minutes between syncs (5 at least). */
   every: number
   into: string
@@ -190,10 +205,18 @@ export function fillTemplate(t: string, item: unknown, fields: Record<string, st
   })
 }
 
+const asList = (v: unknown): unknown[] => (Array.isArray(v) ? v : v == null ? [] : [v])
+
+function listOf(answer: unknown, path?: string): unknown[] {
+  if (!path) return asList(answer)
+  const direct = atPath(answer, path)
+  if (direct !== undefined || !Array.isArray(answer)) return asList(direct)
+  return answer.flatMap((page) => asList(atPath(page, path)))
+}
+
 /** Turn a service's answer into documents for a collection. */
 export function pickDocs(answer: unknown, pick: Pick | undefined, fields: Record<string, string>, max = 500): { id: string; doc: Record<string, unknown> }[] {
-  const list = pick?.items ? atPath(answer, pick.items) : answer
-  const items = Array.isArray(list) ? list : list == null ? [] : [list]
+  const items = listOf(answer, pick?.items)
   return items.slice(0, max).map((item, i) => {
     const rawId = pick?.id ? atPath(item, pick.id) : (item as any)?.id ?? (item as any)?.key ?? (item as any)?.uid
     const id = String(rawId ?? i)

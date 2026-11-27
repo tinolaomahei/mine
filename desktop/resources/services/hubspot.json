@@ -15,5 +15,6 @@
       "label": "Sign in with HubSpot",
       "client": "hubspot"
     }
-  ]
+  ],
+  "logo": "hubspot.svg"
 }

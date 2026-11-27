@@ -125,5 +125,6 @@
         }
       }
     ]
-  }
+  },
+  "logo": "google-calendar.svg"
 }

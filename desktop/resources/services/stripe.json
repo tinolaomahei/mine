@@ -14,5 +14,6 @@
       "auth": "oauth",
       "label": "Sign in with Stripe"
     }
-  ]
+  ],
+  "logo": "stripe.svg"
 }

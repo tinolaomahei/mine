@@ -68,6 +68,7 @@ const api: MineApi = {
   connections: {
     list: () => ipcRenderer.invoke('connections:list'),
     onChange: (cb) => listen('connections:changed', cb),
+    logos: () => ipcRenderer.invoke('connections:logos'),
     add: (service, way) => ipcRenderer.invoke('connections:add', service, way),
     useWay: (id, way) => ipcRenderer.invoke('connections:use-way', id, way),
     remove: (id) => ipcRenderer.invoke('connections:remove', id),
