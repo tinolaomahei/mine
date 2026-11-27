@@ -1,0 +1,10 @@
+{
+  "client_id": "https://mine.computer/oauth/client.json",
+  "client_name": "mine",
+  "client_uri": "https://mine.computer",
+  "logo_uri": "https://mine.computer/favicon.svg",
+  "redirect_uris": ["http://127.0.0.1:47823/callback", "http://localhost:47823/callback"],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none"
+}
