@@ -291,8 +291,27 @@ input {
   background: var(--color-solid-hover);
 }
 
+.edge-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.edge-github svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
 @media (max-width: 720px) {
   .edge-links a:not(.edge-cta) {
+    display: none;
+  }
+
+  .edge-links a.edge-github {
+    display: inline-flex;
+  }
+
+  .edge-github span {
     display: none;
   }
 }
@@ -2099,6 +2118,25 @@ kbd {
   line-height: 0.78;
   letter-spacing: -0.07em;
   margin-left: -0.04em;
+}
+
+.footer-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  color: var(--color-on-solid);
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-underline-offset: 4px;
+}
+
+.footer-links svg {
+  width: 1.1em;
+  height: 1.1em;
 }
 
 .footer-row {
