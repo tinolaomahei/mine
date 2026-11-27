@@ -51,23 +51,23 @@ function AddTo({
       <button
         type="button"
         onClick={() => onOpen(added)}
-        className="flex h-8 items-center gap-1.5 rounded-full bg-bloom-wash px-3 text-[0.8125rem] font-semibold text-ink transition-colors hover:bg-bloom/40"
+        className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-bloom-wash px-3 text-[0.8125rem] font-semibold whitespace-nowrap text-ink transition-colors hover:bg-bloom/40"
       >
-        <Check className="size-3.5 text-bloom-deep" strokeWidth={2.5} />
-        Added. Open {screens.find((s) => s.id === added)?.name ?? 'it'}
-        <ArrowRight className="size-3.5" />
+        <Check className="size-3.5 shrink-0 text-bloom-deep" strokeWidth={2.5} />
+        <span className="max-w-[11rem] truncate">Added. Open {screens.find((s) => s.id === added)?.name ?? 'it'}</span>
+        <ArrowRight className="size-3.5 shrink-0" />
       </button>
     )
 
   return (
-    <div className="flex items-center">
+    <div className="flex shrink-0 items-center">
       <button
         type="button"
         disabled={!ready}
         onClick={() => add(target?.id ?? null)}
-        className="flex h-8 items-center gap-1.5 rounded-l-full bg-solid pr-2.5 pl-3 text-[0.8125rem] font-semibold text-on-solid transition-colors hover:bg-solid-hover disabled:bg-paper-3 disabled:text-neutral"
+        className="flex h-8 items-center gap-1.5 rounded-l-full bg-solid pr-2.5 pl-3 text-[0.8125rem] font-semibold whitespace-nowrap text-on-solid transition-colors hover:bg-solid-hover disabled:bg-paper-3 disabled:text-neutral"
       >
-        <Plus className="size-3.5" strokeWidth={2.5} />
+        <Plus className="size-3.5 shrink-0" strokeWidth={2.5} />
         <span className="max-w-[10rem] truncate">{target ? `Add to ${target.name}` : 'Add to a new screen'}</span>
       </button>
       <Popover open={open} onOpenChange={setOpen}>
