@@ -26,7 +26,7 @@ Every feature in the app is also a command, so anything you can click you can al
 
 ## Downloading it
 
-Installers for Windows, macOS and Linux are on the [releases page](https://github.com/tinolaomahei/mine/releases). They aren't signed yet, so Windows will show a SmartScreen warning and on a Mac you'll need to right-click the app and choose Open the first time.
+Installers for Windows, macOS and Linux are on the [releases page](https://github.com/tinolaomahei/mine/releases). They aren't signed yet, so Windows will show a SmartScreen warning (More info, then Run anyway), and on a Mac you'll need to choose Open Anyway in System Settings, under Privacy & Security, the first time.
 
 ## Running it
 
@@ -39,3 +39,7 @@ npm run dev
 ```
 
 The landing page works the same way from `landing/`.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).

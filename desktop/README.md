@@ -27,7 +27,7 @@ Each platform builds on its own runner and runs the smoke test. The installers l
 
 Installed copies update themselves from the latest published release (`src/main/updates.ts`, using `electron-updater`). The workflow uploads `latest.yml`, `latest-mac.yml` and `latest-linux.yml` plus the blockmaps next to the installers, and `scripts/merge-mac-updates.mjs` joins the two Mac builds into one `latest-mac.yml`. mine checks about 15 seconds after it starts and every 4 hours, unless Update automatically is off in Settings. On Windows and Linux (AppImage, deb, rpm) the new version downloads in the background, its hash is checked, and it installs when mine restarts, or straight away from Settings, About. A Mac copy can only replace itself once it's signed with a Developer ID, so until then the Mac build says a new version is out and links to the release. Drafts are never offered, only published releases.
 
-Signing is optional and switches on when the secrets are there. Without them, Windows shows a SmartScreen warning, and macOS gets an ad-hoc signature, so the first open has to go through right-click, Open.
+Signing is optional and switches on when the secrets are there. Without them, Windows shows a SmartScreen warning, and macOS gets an ad-hoc signature, so the first open has to go through Open Anyway in System Settings, Privacy & Security.
 
 | Secret | What it is |
 | --- | --- |

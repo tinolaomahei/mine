@@ -6,6 +6,10 @@
 # Once it's published, installed copies of mine find it and update themselves, using
 # the latest*.yml files and blockmaps uploaded alongside the installers.
 #
+# The release is named after its major version's tree (releases/trees.json). Its notes
+# come from releases/<version>.md and its graphic from releases/<version>.png when
+# they're there (see releases/README.md), otherwise GitHub writes the notes.
+#
 # Run it from the Actions tab instead and it builds the installers without releasing,
 # so you can try them from the run's artifacts.
 #
@@ -148,7 +152,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: desktop/scripts
+          sparse-checkout: |
+            desktop/scripts
+            releases
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -171,8 +177,26 @@ jobs:
         with:
           subject-path: installers/*
 
+      - name: Name, notes and graphic
+        id: name
+        env:
+          TAG: ${{ github.ref_name }}
+        run: node desktop/scripts/release-name.mjs "${TAG#v}" >> "$GITHUB_OUTPUT"
+
       - name: Create the draft release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" installers/* --repo "$GITHUB_REPOSITORY" --draft --verify-tag --generate-notes --title "mine $TAG"
+          TITLE: ${{ steps.name.outputs.title }}
+          NOTES: ${{ steps.name.outputs.notes }}
+          ART: ${{ steps.name.outputs.art }}
+          ART_NAME: ${{ steps.name.outputs.art_name }}
+        run: |
+          files=(installers/*)
+          if [ -n "$ART" ]; then
+            mkdir -p art && cp "$ART" "art/$ART_NAME"
+            files+=("art/$ART_NAME")
+          fi
+          notes=(--generate-notes)
+          if [ -n "$NOTES" ]; then notes=(--notes-file "$NOTES"); fi
+          gh release create "$TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "$TITLE" "${notes[@]}"
