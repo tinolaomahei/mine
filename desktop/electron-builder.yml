@@ -3,7 +3,7 @@
 appId: computer.mine.desktop
 productName: mine
 executableName: mine
-copyright: Copyright © 2026 tinolaomahei
+copyright: Copyright © 2026 Tino Laomahei
 
 directories:
   output: dist

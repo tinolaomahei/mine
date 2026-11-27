@@ -3,6 +3,7 @@
   "productName": "mine",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "mine: a desktop AI harness that starts with nothing and learns how you work.",
   "homepage": "https://mine.computer",
   "author": "tinolaomahei",
