@@ -5,9 +5,13 @@
 
 export type CommandParam = {
   description: string
-  /** Fixed choices. Missing when the options are worked out at the time (dynamic). */
+  /** Fixed choices. Missing when the options are worked out at the time (dynamic), or for free text. */
   options?: { value: string; description: string }[]
   dynamic?: boolean
+  /** Free text (a name, say). The decisions model can't fill these, so requests needing one go to the agent, which passes it to run_command. */
+  text?: boolean
+  /** For a text param: the command can't run without it (so a spoken request goes to the agent). Optional text params are just left out. */
+  required?: boolean
 }
 
 export type CommandInfo = {

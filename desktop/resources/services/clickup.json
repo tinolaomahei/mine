@@ -1,0 +1,18 @@
+{
+  "id": "clickup",
+  "name": "ClickUp",
+  "what": "Tasks, docs and goals",
+  "group": "Work",
+  "colour": "#7B68EE",
+  "opens": [
+    "app.clickup.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.clickup.com/mcp",
+      "auth": "oauth",
+      "label": "Sign in with ClickUp"
+    }
+  ]
+}

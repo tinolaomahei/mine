@@ -11,6 +11,11 @@ import { wireConversations } from './conversations'
 import { wireFiles } from './files'
 import { wireCommands } from './commands'
 import { reloadWidgets, registerWidgetScheme, widgets, wireWidgets } from './widgets'
+import { wireScreens } from './screens'
+import { listThemes, wireThemes } from './themes'
+import { askPermission, dropPermissions, wirePermissions } from './permissions'
+import { connectionsPipe, wireConnections } from './connections'
+import { adapter } from './harness/registry'
 import { dataCall, dataDir } from './data-store'
 import { mkdirSync, watch } from 'node:fs'
 
@@ -85,6 +90,16 @@ function createWindow() {
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
+/** Each run's folder and agent, so a permission request can say where and who. */
+const runs = new Map<string, { folder: string; agent: string }>()
+
+/** Ask the person, in the window, whether an agent may do something. Only their click answers. */
+function ask(tool: string, input: unknown, runId?: string, outside?: string) {
+  const run = runs.get(runId ?? '')
+  const s = getSettings()
+  return askPermission({ tool, input, runId, outside, folder: run?.folder ?? s.workdir, agent: run?.agent ?? (s.harness ? adapter(s.harness).name : 'The agent') })
+}
+
 function wireIpc() {
   ipcMain.handle('harness:detect', () => detectHarnesses(true))
 
@@ -111,8 +126,13 @@ function wireIpc() {
   ipcMain.handle('agent:run', (e, req: RunRequest) => {
     const { harness, workdir } = getSettings()
     if (!harness) throw new Error('Pick a harness first.')
+    runs.set(req.runId, { folder: workdir, agent: adapter(harness).name })
     void runAgent(harness, workdir, ctx, req, (ev) => {
       if (!e.sender.isDestroyed()) e.sender.send('agent:event', ev)
+    }).finally(() => {
+      // whatever it was still asking the person about no longer matters
+      runs.delete(req.runId)
+      dropPermissions(req.runId)
     })
   })
   ipcMain.handle('agent:cancel', (_e, runId: string) => cancelAgent(runId))
@@ -146,13 +166,22 @@ app.whenReady().then(() => {
   wireData()
   wireFiles()
   wireWidgets(() => win)
+  wireScreens(() => win)
+  wirePermissions(() => win)
+  wireThemes(() => win)
+  wireConnections(() => win)
   const showWidget = (name: string, props: unknown) => win?.webContents.send('widgets:show', { name, props })
   const pipe = wireCommands(() => win, {
     showWidget,
     pipe: {
       widgets: () => widgets(),
       reloadWidgets: () => reloadWidgets(),
+      themes: () => listThemes(),
       show: (req) => showWidget(String(req.name ?? ''), req.props ?? {}),
+      // an agent asking the person before it does something; only their click answers
+      permission: (req) => ask(String(req.tool ?? ''), req.input, req.run ? String(req.run) : undefined),
+      // the tools the person uses every day (see main/connections)
+      ...connectionsPipe(ask),
     },
   })
   ctx = agentContext(pipe)

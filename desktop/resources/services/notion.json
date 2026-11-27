@@ -1,0 +1,19 @@
+{
+  "id": "notion",
+  "name": "Notion",
+  "what": "Docs, wikis and databases",
+  "group": "Docs",
+  "colour": "#191919",
+  "opens": [
+    "www.notion.so",
+    "notion.so"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.notion.com/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Notion"
+    }
+  ]
+}

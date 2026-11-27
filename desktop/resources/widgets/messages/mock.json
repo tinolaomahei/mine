@@ -1,0 +1,132 @@
+{
+  "props": {},
+  "data": {
+    "messages": [
+      {
+        "id": "m1",
+        "sender": "Aroha Ngata",
+        "preview": "can you look at the retry PR before standup? CI is green now",
+        "at": "2026-11-27T02:40:00Z",
+        "unread": true,
+        "channel": "#eng-platform",
+        "service": "Slack",
+        "url": "https://tuiworks.slack.com/archives/C01/p1",
+        "createdAt": 1795747200000,
+        "updatedAt": 1795747200000
+      },
+      {
+        "id": "m2",
+        "sender": "Mere Tipene",
+        "subject": "Contract for the design contractor",
+        "preview": "Hi, the draft is attached. Could you check the start date and rate before I send it on Monday?",
+        "at": "2026-11-27T02:18:00Z",
+        "unread": true,
+        "channel": "Inbox",
+        "service": "Gmail",
+        "url": "https://mail.google.com/mail/u/0/#inbox/m2",
+        "createdAt": 1795745880000,
+        "updatedAt": 1795745880000
+      },
+      {
+        "id": "m3",
+        "sender": "Ben Walsh",
+        "preview": "lunch next week? the new ramen place on K Road is meant to be good",
+        "at": "2026-11-27T01:35:00Z",
+        "unread": true,
+        "channel": "Direct message",
+        "service": "Slack",
+        "url": "https://tuiworks.slack.com/archives/D02/p3",
+        "createdAt": 1795743300000,
+        "updatedAt": 1795743300000
+      },
+      {
+        "id": "m4",
+        "sender": "Priya Raman",
+        "subject": "Agenda for quarterly planning",
+        "preview": "I've put a draft in the shared folder. Add anything you want covered by Friday.",
+        "at": "2026-11-26T23:50:00Z",
+        "unread": true,
+        "channel": "Inbox",
+        "service": "Outlook",
+        "url": "https://outlook.office.com/mail/inbox/id/m4",
+        "createdAt": 1795737000000,
+        "updatedAt": 1795737000000
+      },
+      {
+        "id": "m5",
+        "sender": "Sione Fifita",
+        "preview": "the empty state copy reads well, one small nit on the reports page",
+        "at": "2026-11-26T21:55:00Z",
+        "unread": false,
+        "channel": "#design-crit",
+        "service": "Slack",
+        "url": "https://tuiworks.slack.com/archives/C03/p5",
+        "createdAt": 1795730100000,
+        "updatedAt": 1795730100000
+      },
+      {
+        "id": "m6",
+        "sender": "Finance team",
+        "subject": "November expenses due Monday",
+        "preview": "Please upload receipts for anything over $50 so we can close the month.",
+        "at": "2026-11-26T03:10:00Z",
+        "unread": false,
+        "channel": "Inbox",
+        "service": "Outlook",
+        "url": "https://outlook.office.com/mail/inbox/id/m6",
+        "createdAt": 1795662600000,
+        "updatedAt": 1795662600000
+      },
+      {
+        "id": "m7",
+        "sender": "Jacob Hale",
+        "subject": "Re: Bach booking for January",
+        "preview": "All sorted for the 14th. The key's in the lockbox, same code as last time.",
+        "at": "2026-11-25T06:25:00Z",
+        "unread": true,
+        "channel": "Inbox",
+        "service": "Gmail",
+        "url": "https://mail.google.com/mail/u/0/#inbox/m7",
+        "createdAt": 1795587900000,
+        "updatedAt": 1795587900000
+      },
+      {
+        "id": "m8",
+        "sender": "Liam Chen",
+        "preview": "resolved: staging DB failover finished cleanly, nothing for you to do",
+        "at": "2026-11-24T04:05:00Z",
+        "unread": false,
+        "channel": "#incidents",
+        "service": "Slack",
+        "url": "https://tuiworks.slack.com/archives/C04/p8",
+        "createdAt": 1795493100000,
+        "updatedAt": 1795493100000
+      },
+      {
+        "id": "m9",
+        "sender": "Kate Morrison",
+        "subject": "Photos from the weekend",
+        "preview": "Finally got them off the camera. The ones at Piha came out really well.",
+        "at": "2026-11-21T08:40:00Z",
+        "unread": false,
+        "channel": "Inbox",
+        "service": "Gmail",
+        "url": "https://mail.google.com/mail/u/0/#inbox/m9",
+        "createdAt": 1795250400000,
+        "updatedAt": 1795250400000
+      },
+      {
+        "id": "m10",
+        "sender": "Tama Rewi",
+        "preview": "reminder: the office is closed from the 24th of December until the 5th of January",
+        "at": "2026-11-18T20:30:00Z",
+        "unread": false,
+        "channel": "#general",
+        "service": "Slack",
+        "url": "https://tuiworks.slack.com/archives/C05/p10",
+        "createdAt": 1795033800000,
+        "updatedAt": 1795033800000
+      }
+    ]
+  }
+}

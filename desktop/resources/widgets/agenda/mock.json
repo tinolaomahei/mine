@@ -1,0 +1,135 @@
+{
+  "props": {},
+  "data": {
+    "agenda": [
+      {
+        "id": "a1",
+        "title": "Mum's birthday",
+        "start": "2026-11-27",
+        "end": "2026-11-28",
+        "allDay": true,
+        "service": "Google Calendar",
+        "url": "https://calendar.google.com/calendar/event?eid=a1",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a2",
+        "title": "Standup",
+        "start": "2026-11-27T08:45:00+13:00",
+        "end": "2026-11-27T09:00:00+13:00",
+        "where": "Zoom",
+        "service": "Outlook",
+        "url": "https://outlook.office.com/calendar/item/a2",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a3",
+        "title": "Design review: reports page",
+        "start": "2026-11-27T10:00:00+13:00",
+        "end": "2026-11-27T11:00:00+13:00",
+        "where": "Level 2, Kauri room",
+        "service": "Outlook",
+        "url": "https://outlook.office.com/calendar/item/a3",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a4",
+        "title": "Lunch with Aroha",
+        "start": "2026-11-27T12:30:00+13:00",
+        "end": "2026-11-27T13:30:00+13:00",
+        "where": "Ponsonby Central",
+        "service": "Google Calendar",
+        "url": "https://calendar.google.com/calendar/event?eid=a4",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a5",
+        "title": "1:1 with Mere",
+        "start": "2026-11-27T14:00:00+13:00",
+        "end": "2026-11-27T14:30:00+13:00",
+        "where": "Google Meet",
+        "service": "Google Calendar",
+        "url": "https://calendar.google.com/calendar/event?eid=a5",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a6",
+        "title": "Sprint retro",
+        "start": "2026-11-27T16:00:00+13:00",
+        "end": "2026-11-27T17:00:00+13:00",
+        "where": "Zoom",
+        "service": "Outlook",
+        "url": "https://outlook.office.com/calendar/item/a6",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a7",
+        "title": "Parkrun",
+        "start": "2026-11-28T08:00:00+13:00",
+        "end": "2026-11-28T09:00:00+13:00",
+        "where": "Cornwall Park",
+        "service": "Google Calendar",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a8",
+        "title": "Sione's farewell drinks",
+        "start": "2026-11-28T18:30:00+13:00",
+        "end": "2026-11-28T22:00:00+13:00",
+        "where": "Sione's place, Mt Eden",
+        "service": "Google Calendar",
+        "url": "https://calendar.google.com/calendar/event?eid=a8",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a9",
+        "title": "Call Nana",
+        "start": "2026-11-29T11:00:00+13:00",
+        "end": "2026-11-29T11:30:00+13:00",
+        "service": "Google Calendar",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a10",
+        "title": "Release freeze",
+        "start": "2026-11-30",
+        "end": "2026-12-02",
+        "allDay": true,
+        "service": "Outlook",
+        "url": "https://outlook.office.com/calendar/item/a10",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a12",
+        "title": "Quarterly planning",
+        "start": "2026-11-30T13:00:00+13:00",
+        "end": "2026-11-30T15:00:00+13:00",
+        "where": "Level 4, Rimu room",
+        "service": "Outlook",
+        "url": "https://outlook.office.com/calendar/item/a12",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      },
+      {
+        "id": "a13",
+        "title": "Physio",
+        "start": "2026-12-01T07:30:00+13:00",
+        "end": "2026-12-01T08:15:00+13:00",
+        "where": "Grey Lynn",
+        "service": "Google Calendar",
+        "createdAt": 1795716000000,
+        "updatedAt": 1795716000000
+      }
+    ]
+  }
+}

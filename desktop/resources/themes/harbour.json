@@ -1,0 +1,64 @@
+{
+  "name": "Harbour",
+  "description": "Deep navy ink on cool, pale paper, with a sea-glass green accent. Calm and even, like a clear morning on the water.",
+  "theme": {
+    "name": "Harbour",
+    "light": {
+      "background": "oklch(97.5% 0.008 230)",
+      "surface": "oklch(99.5% 0.004 230)",
+      "subtle": "oklch(94.5% 0.014 228)",
+      "subtle-strong": "oklch(90.5% 0.02 228)",
+      "border": "oklch(86% 0.022 232)",
+      "text": "oklch(24% 0.065 258)",
+      "text-muted": "oklch(39% 0.055 252)",
+      "text-subtle": "oklch(49% 0.04 245)",
+      "solid": "oklch(28% 0.085 260)",
+      "solid-hover": "oklch(35% 0.09 260)",
+      "solid-border": "oklch(42% 0.08 258)",
+      "on-solid": "oklch(97% 0.01 230)",
+      "on-solid-muted": "oklch(82% 0.04 235)",
+      "accent": "oklch(81% 0.095 178)",
+      "on-accent": "oklch(25% 0.06 230)",
+      "accent-strong": "oklch(47% 0.09 195)",
+      "accent-wash": "oklch(93.5% 0.035 182)",
+      "danger": "oklch(53% 0.18 27)",
+      "focus": "oklch(50% 0.17 258)",
+      "code-background": "oklch(25% 0.06 258)",
+      "code-text": "oklch(95% 0.012 220)"
+    },
+    "dark": {
+      "background": "oklch(17% 0.013 245)",
+      "surface": "oklch(20.5% 0.015 245)",
+      "subtle": "oklch(23.5% 0.017 245)",
+      "subtle-strong": "oklch(29% 0.019 245)",
+      "border": "oklch(32% 0.019 245)",
+      "text": "oklch(95% 0.008 230)",
+      "text-muted": "oklch(80% 0.013 235)",
+      "text-subtle": "oklch(68% 0.016 240)",
+      "solid": "oklch(31% 0.035 252)",
+      "solid-hover": "oklch(37% 0.04 252)",
+      "solid-border": "oklch(44% 0.04 252)",
+      "on-solid": "oklch(96% 0.008 230)",
+      "on-solid-muted": "oklch(81% 0.02 235)",
+      "accent": "oklch(80% 0.1 178)",
+      "on-accent": "oklch(20% 0.04 210)",
+      "accent-strong": "oklch(80% 0.1 180)",
+      "accent-wash": "oklch(27% 0.035 190)",
+      "danger": "oklch(71% 0.16 25)",
+      "focus": "oklch(75% 0.13 250)",
+      "code-background": "oklch(13% 0.01 245)",
+      "code-text": "oklch(94% 0.01 220)"
+    },
+    "fonts": {
+      "display": "'Source Sans 3', 'Segoe UI', ui-sans-serif, system-ui, sans-serif",
+      "ui": "'Source Sans 3', 'Segoe UI', ui-sans-serif, system-ui, sans-serif",
+      "body": "'Source Sans 3', 'Segoe UI', ui-sans-serif, system-ui, sans-serif",
+      "mono": "'Source Code Pro', ui-monospace, Consolas, monospace",
+      "google": [
+        "Source Sans 3:ital,wght@0,300..800;1,300..800",
+        "Source Code Pro:wght@400..600"
+      ]
+    },
+    "radius": "0.625rem"
+  }
+}

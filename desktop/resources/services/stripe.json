@@ -1,0 +1,18 @@
+{
+  "id": "stripe",
+  "name": "Stripe",
+  "what": "Payments, customers and invoices",
+  "group": "Business",
+  "colour": "#635BFF",
+  "opens": [
+    "dashboard.stripe.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.stripe.com",
+      "auth": "oauth",
+      "label": "Sign in with Stripe"
+    }
+  ]
+}

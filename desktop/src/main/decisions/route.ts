@@ -32,7 +32,7 @@ export function routePlan(_ctx: RouteContext, t: Targets = { commands: [], widge
     ...t.commands.map((c) => ({ value: `c:${c.name}`, description: c.description + said(c.examples) })),
     ...t.widgets
       .filter((w) => w.approved && !w.error)
-      .map((w) => ({ value: `w:${w.name}`, description: `Show the “${w.title}” widget. ${w.description}${said(w.examples)}` })),
+      .map((w) => ({ value: `w:${w.id}`, description: `Show the “${w.title}” widget. ${w.description}${said(w.examples)}` })),
   ]
   const qs: Question[] = [
     {
@@ -73,8 +73,8 @@ export function interpret(d: Decision, _ctx: RouteContext, provider: string, pla
   const meta = { confidence: a.confidence, ms: d.ms, model: d.model, provider }
 
   if (a.value.startsWith('w:')) {
-    const w = t?.widgets.find((x) => x.name === a.value.slice(2))
-    return w ? { kind: 'widget', name: w.name, title: w.title, ...meta } : { kind: 'agent', ms: d.ms }
+    const w = t?.widgets.find((x) => x.id === a.value.slice(2))
+    return w ? { kind: 'widget', name: w.id, title: w.title, ...meta } : { kind: 'agent', ms: d.ms }
   }
   if (a.value.startsWith('c:')) {
     const c = t?.commands.find((x) => x.name === a.value.slice(2))
@@ -84,6 +84,11 @@ export function interpret(d: Decision, _ctx: RouteContext, provider: string, pla
     for (const [param, p] of Object.entries(c.params)) {
       if (p.dynamic) {
         missing.push(param)
+        continue
+      }
+      // free text (a name, say): the agent fills it if it's needed, otherwise it's left out
+      if (p.text) {
+        if (p.required) return { kind: 'agent', ms: d.ms }
         continue
       }
       const key = plan?.params.find((k) => k.command === c.name && k.param === param)?.key

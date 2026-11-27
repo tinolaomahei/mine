@@ -1,0 +1,8 @@
+{
+  "title": "Work",
+  "description": "The person's work items from Jira, Linear, GitHub and other tools mine syncs: what's in progress, what's next and what's done, with status, key, project and due date, filterable by service. Read only. Documents in \"work\": { title: string, key?: string, status?: string, statusGroup?: \"todo\" | \"doing\" | \"done\", project?: string, due?: \"YYYY-MM-DD\", priority?: string, url?: string, service?: string, changed?: ISO datetime }.",
+  "examples": ["show my work", "what am I working on", "what's on my plate in Jira", "show my Linear and GitHub issues"],
+  "data": ["work"],
+  "size": { "w": 5, "h": 5 },
+  "minSize": { "w": 3, "h": 3 }
+}

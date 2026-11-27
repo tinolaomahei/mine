@@ -1,0 +1,8 @@
+{
+  "title": "Agenda",
+  "description": "The person's calendar for today and the next week from Google Calendar, Outlook and other calendars mine syncs, grouped by day, with what's on now or next marked. Read only. Documents in \"agenda\": { title: string, start: ISO datetime (or \"YYYY-MM-DD\" when allDay), end?: same as start (exclusive for all-day), allDay?: boolean, where?: string, url?: string, service?: string }.",
+  "examples": ["show my agenda", "what's on today", "what meetings do I have this week", "what's next in my calendar"],
+  "data": ["agenda"],
+  "size": { "w": 4, "h": 5 },
+  "minSize": { "w": 3, "h": 3 }
+}

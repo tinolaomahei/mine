@@ -1,0 +1,19 @@
+{
+  "id": "figma",
+  "name": "Figma",
+  "what": "Designs and files",
+  "group": "Design",
+  "colour": "#A259FF",
+  "opens": [
+    "www.figma.com",
+    "figma.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.figma.com/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Figma"
+    }
+  ]
+}

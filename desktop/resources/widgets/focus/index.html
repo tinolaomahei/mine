@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Focus timer</title>
+<style>
+  :root:is([data-place=screen], [data-place=preview]),
+  :root:is([data-place=screen], [data-place=preview]) body { height: 100%; }
+  :root:is([data-place=screen], [data-place=preview]) body { overflow: hidden; }
+
+  .w { display: flex; flex-direction: column; gap: 10px; padding: 14px; container-type: inline-size; }
+  :root:is([data-place=screen], [data-place=preview]) .w { height: 100%; container-type: size; }
+
+  .label {
+    font: 500 10.5px/1.3 var(--font-mono); letter-spacing: 0.02em;
+    text-transform: uppercase; color: var(--neutral); white-space: nowrap;
+  }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex: none; }
+  .mode.on { color: var(--bloom-deep); }
+  .short { display: none; }
+  @container (max-width: 210px) { .long { display: none; } .short { display: inline; } }
+
+  .dial { position: relative; flex: 1 1 auto; min-height: 0; display: grid; place-items: center; container-type: size; }
+  :root:not([data-place=screen]):not([data-place=preview]) .dial { height: 180px; flex: none; }
+  .ring { position: absolute; width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); transform: rotate(-90deg); }
+  .ring circle { fill: none; cx: 50%; cy: 50%; r: calc(50% - 2px); }
+  .track { stroke: var(--rule); stroke-width: 1.5px; }
+  .bar { stroke: var(--bloom-deep); stroke-width: 2.5px; stroke-linecap: round; transition: stroke-dashoffset 0.25s linear; }
+  @container (max-height: 70px) { .ring { display: none; } }
+  .time {
+    position: relative; font-family: var(--font-display); font-weight: 500; line-height: 1;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.03em; color: var(--ink);
+    font-size: max(22px, calc(min(100cqw, 100cqh) * 0.25));
+  }
+  @container (max-height: 70px) { .time { font-size: min(70cqh, 30cqw); } }
+
+  .controls { display: flex; align-items: center; justify-content: center; gap: 8px; flex: none; }
+  .icon, .main {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 32px; padding: 0; border: 0; cursor: pointer; font: 500 14px var(--font-ui);
+  }
+  .icon { width: 32px; color: var(--muted-ink); background: transparent; border-radius: 999px; }
+  .icon:hover { color: var(--ink); background: var(--paper-2); }
+  .main {
+    min-width: 84px; padding: 0 14px 0 12px; color: var(--on-bloom); background: var(--bloom);
+    border: 1px solid var(--bloom); border-radius: 999px;
+  }
+  .main:hover { opacity: 0.88; }
+  .main.pause { color: var(--ink); background: transparent; border-color: var(--rule); }
+  .main.pause:hover { background: var(--paper-2); opacity: 1; }
+  svg { width: 16px; height: 16px; flex: none; }
+  @container (max-width: 150px) { .main span { display: none; } .main { min-width: 32px; width: 32px; padding: 0; } }
+
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main class="w">
+  <header class="top">
+    <span class="label mode" id="mode">Focus</span>
+    <span class="label" id="today"></span>
+  </header>
+  <div class="dial">
+    <svg class="ring" aria-hidden="true">
+      <circle class="track"/>
+      <circle class="bar" id="bar" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/>
+    </svg>
+    <div class="time" id="time" role="timer" aria-live="off">25:00</div>
+  </div>
+  <div class="controls">
+    <button class="icon" id="reset" type="button" aria-label="Reset">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
+    </button>
+    <button class="main" id="go" type="button"></button>
+    <button class="icon" id="skip" type="button" aria-label="Skip to break">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5.5l9 6.5-9 6.5z"/><path d="M18.5 5.5v13"/></svg>
+    </button>
+  </div>
+</main>
+<script>
+(() => {
+  const C = 'focus'
+  const LEN = { focus: 25, break: 5 } // minutes
+  const root = document.documentElement
+  if (!root.dataset.place) root.dataset.place = mine.place || 'conversation'
+
+  const $ = (id) => document.getElementById(id)
+  const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>'
+  const PAUSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg>'
+
+  let mode = 'focus'
+  let remaining = LEN.focus * 60e3
+  let endAt = 0 // running while set
+
+  const total = () => LEN[mode] * 60e3
+  const left = () => (endAt ? Math.max(0, endAt - Date.now()) : remaining)
+  const mmss = (ms) => {
+    const s = Math.ceil(ms / 1000)
+    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+  }
+
+  function chime() {
+    if (mine.preview) return
+    try {
+      const ctx = new AudioContext()
+      ;[[660, 0], [880, 0.22]].forEach(([f, at]) => {
+        const o = ctx.createOscillator(), g = ctx.createGain()
+        o.type = 'sine'
+        o.frequency.value = f
+        g.gain.setValueAtTime(0.0001, ctx.currentTime + at)
+        g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + at + 0.02)
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.9)
+        o.connect(g).connect(ctx.destination)
+        o.start(ctx.currentTime + at)
+        o.stop(ctx.currentTime + at + 1)
+      })
+      setTimeout(() => ctx.close(), 1500)
+    } catch {}
+  }
+
+  function next(completed) {
+    if (completed && mode === 'focus') {
+      mine.data.put(C, { minutes: LEN.focus, endedAt: Date.now() }).then(count, () => {})
+    }
+    if (completed) chime()
+    const wasFocus = mode === 'focus'
+    mode = wasFocus ? 'break' : 'focus'
+    remaining = total()
+    // a finished focus session rolls straight into its break; a break waits for the person
+    endAt = completed && wasFocus ? Date.now() + remaining : 0
+    draw()
+  }
+
+  let shown = ''
+  function draw() {
+    const ms = left()
+    const running = !!endAt
+    const paused = !running && ms < total()
+    $('time').textContent = mmss(ms)
+    $('bar').style.strokeDashoffset = String(100 - (100 * ms) / total())
+    $('mode').textContent = (mode === 'focus' ? 'Focus' : 'Break') + (paused ? ' · paused' : '')
+    $('mode').classList.toggle('on', running)
+    const key = mode + running + paused
+    if (key === shown) return
+    shown = key
+    const go = $('go')
+    go.className = 'main' + (running ? ' pause' : '')
+    go.innerHTML = (running ? PAUSE : PLAY) + `<span>${running ? 'Pause' : paused ? 'Resume' : 'Start'}</span>`
+    go.setAttribute('aria-label', running ? 'Pause' : paused ? 'Resume' : `Start ${mode === 'focus' ? 'focus' : 'break'}`)
+    $('skip').setAttribute('aria-label', mode === 'focus' ? 'Skip to break' : 'Skip to focus')
+  }
+
+  function tick() {
+    if (endAt && Date.now() >= endAt) next(true)
+    else draw()
+  }
+
+  $('go').addEventListener('click', () => {
+    if (endAt) { remaining = left(); endAt = 0 } else endAt = Date.now() + remaining
+    draw()
+  })
+  $('reset').addEventListener('click', () => { endAt = 0; remaining = total(); draw() })
+  $('skip').addEventListener('click', () => next(false))
+
+  let day = ''
+  async function count() {
+    const d = new Date()
+    day = d.toDateString()
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+    let n = 0
+    try {
+      const docs = await mine.data.list(C)
+      n = (Array.isArray(docs) ? docs : []).filter((x) => x && Number(x.endedAt || x.createdAt) >= dayStart).length
+    } catch {}
+    $('today').innerHTML = `<span class="long">${n} ${n === 1 ? 'session' : 'sessions'} today</span><span class="short">${n} today</span>`
+  }
+
+  mine.data.watch(C, count)
+  count()
+  draw()
+  setInterval(() => {
+    tick()
+    if (new Date().toDateString() !== day) count()
+  }, 250)
+  document.addEventListener('visibilitychange', tick)
+})()
+</script>
+</body>
+</html>

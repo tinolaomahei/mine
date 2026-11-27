@@ -1,18 +1,22 @@
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, watch } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, watch } from 'node:fs'
 import { extname, join, relative, resolve, sep } from 'node:path'
 import { app, ipcMain, net, protocol, shell, type BrowserWindow } from 'electron'
 import { pathToFileURL } from 'node:url'
 import { googleFontsUrl, themeCss } from '@shared/theme'
-import { WIDGET_NAME, type WidgetInfo } from '@shared/widgets'
+import { GRID, WIDGET_NAME, type GridSize, type WidgetInfo, type WidgetMock } from '@shared/widgets'
 import { approve, forget, hashOf, isApproved } from './approvals'
 import { themeState } from './theme'
 
-// Widgets live in userData/widgets/<name>/ and are served over mine-widget://
-// with a strict content policy: inline code runs, nothing reaches the network.
-// Nothing is served until the person approves the folder's exact contents.
+// Widgets are served over mine-widget:// with a strict content policy: inline
+// code runs, nothing reaches the network. mine's own (native) widgets ship in
+// resources/widgets and are served as <name>.native. The person's live in
+// userData/widgets/<name>/ and aren't served until they approve the folder's
+// exact contents.
 
 export const SCHEME = 'mine-widget'
 export const widgetsDir = () => join(app.getPath('userData'), 'widgets')
+export const nativeDir = () => join(__dirname, '../../resources/widgets')
+const NATIVE = '.native'
 
 const MAX_FILES = 60
 const MAX_BYTES = 5 * 1024 * 1024
@@ -82,36 +86,87 @@ function folderHash(dir: string) {
   return hashOf(Buffer.concat(parts))
 }
 
-function readWidget(name: string): WidgetInfo {
-  const dir = join(widgetsDir(), name)
-  const base: WidgetInfo = { name, title: name, description: '', examples: [], data: [], approved: false, dir }
+const cells = (v: unknown, fallback: GridSize): GridSize => {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  const n = (x: unknown, d: number, max: number) => Math.max(1, Math.min(max, Math.round(Number(x)) || d))
+  return { w: n(o.w, fallback.w, GRID.cols), h: n(o.h, fallback.h, 24) }
+}
+
+function readWidget(name: string, source: WidgetInfo['source']): WidgetInfo {
+  const dir = join(source === 'native' ? nativeDir() : widgetsDir(), name)
+  const id = source === 'native' ? name + NATIVE : name
+  const base: WidgetInfo = {
+    id,
+    name,
+    source,
+    title: name,
+    description: '',
+    examples: [],
+    data: [],
+    size: { w: 4, h: 3 },
+    minSize: { w: 2, h: 2 },
+    mock: false,
+    approved: source === 'native',
+    dir,
+  }
   try {
     const meta = JSON.parse(readFileSync(join(dir, 'widget.json'), 'utf8'))
     statSync(join(dir, 'index.html'))
     const data = Array.isArray(meta.data) ? meta.data.map(String) : []
+    const size = cells(meta.size, base.size)
+    const min = cells(meta.minSize, base.minSize)
     return {
       ...base,
       title: String(meta.title ?? name),
       description: String(meta.description ?? ''),
       examples: Array.isArray(meta.examples) ? meta.examples.map(String).slice(0, 8) : [],
       data: data.filter((c: string) => /^[a-z0-9][a-z0-9_-]{0,47}$/.test(c)),
-      approved: isApproved('widget', name, folderHash(dir)),
+      size,
+      minSize: { w: Math.min(min.w, size.w), h: Math.min(min.h, size.h) },
+      mock: existsSync(join(dir, 'mock.json')),
+      // mine's own widgets ship with the app; the person's need their OK
+      approved: source === 'native' || isApproved('widget', name, folderHash(dir)),
     }
   } catch (err) {
     return { ...base, error: (err as Error).message.split('\n')[0] }
   }
 }
 
-export function reloadWidgets() {
-  let names: string[] = []
+const folders = (dir: string) => {
   try {
-    names = readdirSync(widgetsDir(), { withFileTypes: true })
+    return readdirSync(dir, { withFileTypes: true })
       .filter((e) => e.isDirectory() && WIDGET_NAME.test(e.name))
       .map((e) => e.name)
   } catch {
-    /* none yet */
+    return [] // none yet
   }
-  list = names.map(readWidget)
+}
+
+/** Where a widget's files are, by id, or null if it isn't one. */
+function dirOf(id: string) {
+  if (id.endsWith(NATIVE)) {
+    const name = id.slice(0, -NATIVE.length)
+    return WIDGET_NAME.test(name) ? { dir: join(nativeDir(), name), native: true, name } : null
+  }
+  return WIDGET_NAME.test(id) ? { dir: join(widgetsDir(), id), native: false, name: id } : null
+}
+
+/** A widget's sample data, for previews. */
+export function widgetMock(id: string): WidgetMock {
+  const at = dirOf(String(id))
+  if (!at) return {}
+  try {
+    const file = join(at.dir, 'mock.json')
+    if (statSync(file).size > 1024 * 1024) return {}
+    const m = JSON.parse(readFileSync(file, 'utf8'))
+    return m && typeof m === 'object' ? { props: m.props ?? {}, data: m.data ?? {} } : {}
+  } catch {
+    return {}
+  }
+}
+
+export function reloadWidgets() {
+  list = [...folders(nativeDir()).map((n) => readWidget(n, 'native')), ...folders(widgetsDir()).map((n) => readWidget(n, 'yours'))]
   const w = getWin()
   if (w && !w.isDestroyed()) w.webContents.send('widgets:changed', list)
   return list
@@ -142,6 +197,7 @@ function baseCss() {
 }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; background: transparent; }
+html[data-place='screen'], html[data-place='preview'], html[data-place='screen'] body, html[data-place='preview'] body { height: 100%; }
 body { color: var(--ink); font: 15px/1.45 var(--font-ui); -webkit-font-smoothing: antialiased; }
 button, input, select, textarea { font: inherit; color: inherit; }
 `
@@ -157,8 +213,12 @@ const BRIDGE = `(() => {
       pending.set(id, { resolve, reject })
       parent.postMessage({ mine: 1, id, method, args }, '*')
     })
-  let props = {}
-  try { props = JSON.parse(decodeURIComponent(location.hash.slice(1)) || '{}') } catch {}
+  // the host passes { p: props, place, preview } in the hash
+  let hash = {}
+  try { hash = JSON.parse(decodeURIComponent(location.hash.slice(1)) || '{}') || {} } catch {}
+  const props = hash.p && typeof hash.p === 'object' ? hash.p : {}
+  const place = hash.place === 'screen' || hash.place === 'preview' ? hash.place : 'conversation'
+  document.documentElement.dataset.place = place
   addEventListener('message', (e) => {
     if (e.source !== parent) return
     const m = e.data
@@ -176,6 +236,8 @@ const BRIDGE = `(() => {
   })
   window.mine = {
     props,
+    place,
+    preview: !!hash.preview,
     data: {
       list: (c, where) => call('data.list', c, where),
       get: (c, id) => call('data.get', c, id),
@@ -190,8 +252,10 @@ const BRIDGE = `(() => {
     },
     run: (command, params) => call('run', command, params || {}),
     ask: (text) => call('ask', String(text)),
+    open: (url) => call('open', String(url)),
   }
-  const size = () => parent.postMessage({ mine: 1, event: 'height', height: Math.ceil(document.documentElement.getBoundingClientRect().height) }, '*')
+  // on a screen the host sets the size; in the conversation it follows the content
+  const size = () => place === 'conversation' && parent.postMessage({ mine: 1, event: 'height', height: Math.ceil(document.documentElement.getBoundingClientRect().height) }, '*')
   addEventListener('DOMContentLoaded', () => { new ResizeObserver(size).observe(document.documentElement); size() })
   addEventListener('error', (e) => parent.postMessage({ mine: 1, event: 'error', message: String(e.message || e) }, '*'))
   addEventListener('unhandledrejection', (e) => parent.postMessage({ mine: 1, event: 'error', message: String((e.reason && e.reason.message) || e.reason) }, '*'))
@@ -214,16 +278,19 @@ function serve(req: Request) {
     if (url.pathname === '/bridge.js') return respond(BRIDGE, TYPES['.js'])
     return respond('Not found', 'text/plain', 404)
   }
-  if (!WIDGET_NAME.test(host)) return respond('Not found', 'text/plain', 404)
-  const dir = join(widgetsDir(), host)
-  // check the exact files on disk now, not what was there at the last scan
-  let ok = false
+  const at = dirOf(host)
+  if (!at) return respond('Not found', 'text/plain', 404)
+  const dir = at.dir
+  // the person's widgets: check the exact files on disk now, not what was there at the last scan
+  let ok = at.native
   try {
-    ok = isApproved('widget', host, folderHash(dir))
+    ok ||= isApproved('widget', at.name, folderHash(dir))
   } catch {
     ok = false
   }
   if (!ok) return respond('This widget isn’t approved.', 'text/plain', 403)
+  // sample data goes to the host, not the widget
+  if (url.pathname === '/mock.json') return respond('Not found', 'text/plain', 404)
   const path = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname)
   const file = resolve(dir, '.' + path)
   if (!file.startsWith(dir + sep)) return respond('Not found', 'text/plain', 404)
@@ -267,6 +334,7 @@ export function wireWidgets(win: () => BrowserWindow | undefined) {
   }
 
   ipcMain.handle('widgets:list', () => list)
+  ipcMain.handle('widgets:mock', (_e, id: string) => widgetMock(id))
   // only ever from the window: the person clicking Approve
   ipcMain.handle('widgets:approve', (_e, name: string) => approveWidget(name))
   ipcMain.handle('widgets:remove', (_e, name: string) => removeWidget(name))

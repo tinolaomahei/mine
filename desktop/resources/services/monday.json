@@ -1,0 +1,18 @@
+{
+  "id": "monday",
+  "name": "monday.com",
+  "what": "Boards, items and projects",
+  "group": "Work",
+  "colour": "#FF3D57",
+  "opens": [
+    "*.monday.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.monday.com/mcp",
+      "auth": "oauth",
+      "label": "Sign in with monday.com"
+    }
+  ]
+}

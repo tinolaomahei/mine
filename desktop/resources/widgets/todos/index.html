@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>To-dos</title>
+<style>
+  :root:is([data-place=screen], [data-place=preview]),
+  :root:is([data-place=screen], [data-place=preview]) body { height: 100%; }
+  :root:is([data-place=screen], [data-place=preview]) body { overflow: hidden; }
+
+  .w { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
+  :root:is([data-place=screen], [data-place=preview]) .w { height: 100%; }
+
+  .label {
+    font: 500 10.5px/1.3 var(--font-mono); letter-spacing: 0.02em;
+    text-transform: uppercase; color: var(--neutral);
+  }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+
+  .field {
+    width: 100%; height: 34px; padding: 0 12px; flex: none;
+    font: 14px var(--font-ui); color: var(--ink);
+    background: transparent; border: 1px solid var(--rule);
+    border-radius: calc(var(--radius) - 6px); outline: none;
+  }
+  .field::placeholder { color: var(--neutral); }
+  .field:focus { border-color: var(--bloom-deep); }
+
+  .list {
+    list-style: none; margin: 0 -6px; padding: 0 6px;
+    flex: 1 1 auto; min-height: 0; overflow: auto;
+    scrollbar-width: thin; scrollbar-color: var(--rule) transparent;
+  }
+  :root:not([data-place=screen]):not([data-place=preview]) .list { max-height: 300px; }
+
+  .item {
+    display: flex; align-items: center; gap: 4px;
+    margin: 0 -6px; padding: 0 2px 0 6px; min-height: 36px;
+    border-radius: calc(var(--radius) - 6px);
+  }
+  .item:hover { background: var(--paper-2); }
+  .main {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+    padding: 7px 0; cursor: pointer;
+  }
+  .text { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.35; overflow-wrap: anywhere; }
+  .item.done .text { color: var(--neutral); text-decoration: line-through; text-decoration-color: var(--neutral); }
+
+  .box { position: relative; flex: none; width: 18px; height: 18px; }
+  .cb {
+    appearance: none; margin: 0; width: 18px; height: 18px; cursor: pointer;
+    border: 1.5px solid var(--neutral); border-radius: 6px; background: transparent;
+  }
+  .cb:checked { background: var(--bloom); border-color: var(--bloom); }
+  .tick { position: absolute; inset: 0; width: 18px; height: 18px; padding: 2px; color: var(--on-bloom); pointer-events: none; opacity: 0; }
+  .cb:checked + .tick { opacity: 1; }
+
+  .icon {
+    flex: none; display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
+    color: var(--neutral); background: transparent; border: 0; cursor: pointer;
+    border-radius: calc(var(--radius) - 6px);
+  }
+  .icon:hover { color: var(--ink); background: var(--paper-3); }
+  .icon svg { width: 15px; height: 15px; }
+  .del { opacity: 0; }
+  .item:hover .del, .item:focus-within .del { opacity: 1; }
+  @media (hover: none) { .del { opacity: 1; } }
+
+  .empty { margin: 0; font-size: 14px; color: var(--muted-ink); }
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
+  .link {
+    padding: 4px 8px; margin: -4px -8px; border: 0; background: transparent; cursor: pointer;
+    font: 13px var(--font-ui); color: var(--muted-ink); border-radius: calc(var(--radius) - 6px);
+  }
+  .link:hover { color: var(--ink); background: var(--paper-2); }
+
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .field:focus-visible { outline: none; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="w">
+  <header class="top">
+    <span class="label">To-dos</span>
+    <span class="label" id="count"></span>
+  </header>
+  <input class="field" id="add" placeholder="Add a to-do" aria-label="Add a to-do" maxlength="500" autocomplete="off">
+  <p class="empty" id="empty" hidden>Nothing to do. Add something above.</p>
+  <ul class="list" id="list" aria-label="To-dos"></ul>
+  <footer class="foot" id="foot" hidden>
+    <span class="label" id="donecount"></span>
+    <button class="link" id="clear" type="button">Clear done</button>
+  </footer>
+</main>
+<script>
+(() => {
+  const C = 'todos'
+  const root = document.documentElement
+  if (!root.dataset.place) root.dataset.place = mine.place || 'conversation'
+
+  const $ = (id) => document.getElementById(id)
+  const list = $('list'), add = $('add'), empty = $('empty'), count = $('count'), foot = $('foot')
+  const TICK = '<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+  const X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+
+  let docs = []
+  const rows = new Map()
+  let seq = 0
+
+  const time = (d) => Number(d.updatedAt || d.createdAt || 0)
+  const sorted = () => {
+    const open = docs.filter((d) => !d.done).sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0))
+    const done = docs.filter((d) => d.done).sort((a, b) => time(b) - time(a))
+    return [...open, ...done]
+  }
+
+  function makeRow(id) {
+    const li = document.createElement('li')
+    li.className = 'item'
+    li.innerHTML = `<label class="main"><span class="box"><input class="cb" type="checkbox">${TICK}</span><span class="text"></span></label><button class="icon del" type="button">${X}</button>`
+    const cb = li.querySelector('.cb')
+    cb.addEventListener('change', () => {
+      const d = docs.find((x) => x.id === id)
+      if (!d) return
+      d.done = cb.checked
+      d.updatedAt = Date.now()
+      draw()
+      mine.data.patch(C, id, { done: cb.checked }).catch(load)
+    })
+    li.querySelector('.del').addEventListener('click', () => {
+      const order = sorted()
+      const i = order.findIndex((x) => x.id === id)
+      const next = order[i + 1] || order[i - 1]
+      docs = docs.filter((x) => x.id !== id)
+      draw()
+      const target = next && rows.get(next.id)
+      ;(target ? target.querySelector('.cb') : add).focus()
+      mine.data.remove(C, id).catch(load)
+    })
+    return li
+  }
+
+  function draw() {
+    const order = sorted()
+    const focused = document.activeElement
+    const keep = new Set(order.map((d) => d.id))
+    for (const [id, li] of rows) if (!keep.has(id)) { li.remove(); rows.delete(id) }
+    let prev = null
+    for (const d of order) {
+      let li = rows.get(d.id)
+      if (!li) { li = makeRow(d.id); rows.set(d.id, li) }
+      const text = String(d.text ?? '')
+      li.classList.toggle('done', !!d.done)
+      li.querySelector('.text').textContent = text
+      li.querySelector('.cb').checked = !!d.done
+      li.querySelector('.cb').setAttribute('aria-label', text)
+      li.querySelector('.del').setAttribute('aria-label', `Delete "${text}"`)
+      const want = prev ? prev.nextSibling : list.firstChild
+      if (want !== li) list.insertBefore(li, want)
+      prev = li
+    }
+    if (focused && focused.isConnected && document.activeElement !== focused) focused.focus({ preventScroll: true })
+
+    const open = docs.filter((d) => !d.done).length
+    const done = docs.length - open
+    count.textContent = docs.length ? (open ? `${open} open` : 'All done') : ''
+    empty.hidden = docs.length > 0
+    list.hidden = docs.length === 0
+    foot.hidden = done === 0
+    $('donecount').textContent = `${done} done`
+  }
+
+  async function load() {
+    const mySeq = ++seq
+    try {
+      const got = await mine.data.list(C)
+      if (mySeq !== seq) return
+      docs = Array.isArray(got) ? got.filter((d) => d && d.id) : []
+      draw()
+    } catch (err) {
+      empty.hidden = false
+      empty.textContent = 'Could not load to-dos.'
+    }
+  }
+
+  add.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter' || e.isComposing) return
+    const text = add.value.trim()
+    if (!text) return
+    add.value = ''
+    try { await mine.data.put(C, { text, done: false }) } catch { add.value = text }
+    load()
+  })
+
+  $('clear').addEventListener('click', async () => {
+    const done = docs.filter((d) => d.done)
+    docs = docs.filter((d) => !d.done)
+    draw()
+    add.focus()
+    await Promise.allSettled(done.map((d) => mine.data.remove(C, d.id)))
+    load()
+  })
+
+  mine.data.watch(C, load)
+  load()
+})()
+</script>
+</body>
+</html>

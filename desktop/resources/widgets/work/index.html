@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work</title>
+<style>
+  :root:is([data-place=screen], [data-place=preview]),
+  :root:is([data-place=screen], [data-place=preview]) body { height: 100%; }
+  :root:is([data-place=screen], [data-place=preview]) body { overflow: hidden; }
+
+  .w { display: flex; flex-direction: column; gap: 10px; padding: 14px; container-type: inline-size; }
+  :root:is([data-place=screen], [data-place=preview]) .w { height: 100%; container-type: size; }
+
+  .label {
+    font: 500 10.5px/1.3 var(--font-mono); letter-spacing: 0.02em;
+    text-transform: uppercase; color: var(--neutral);
+  }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex: none; }
+
+  .chips {
+    display: flex; gap: 6px; flex: none; overflow-x: auto; scrollbar-width: none;
+    margin: -4px -14px; padding: 4px 14px;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: none; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px;
+    font: 500 12.5px var(--font-ui); color: var(--muted-ink); background: transparent; cursor: pointer;
+    border: 1px solid var(--rule); border-radius: 999px;
+  }
+  .chip:hover { color: var(--ink); background: var(--paper-2); }
+  .chip[aria-pressed=true] { color: var(--on-solid); background: var(--solid); border-color: var(--solid); }
+  .chip .n { font: 500 10.5px/1 var(--font-mono); opacity: 0.7; }
+
+  .list {
+    margin: 0 -6px; padding: 0 6px;
+    flex: 1 1 auto; min-height: 0; overflow: auto;
+    scrollbar-width: thin; scrollbar-color: var(--rule) transparent;
+  }
+  :root:not([data-place=screen]):not([data-place=preview]) .list { max-height: 340px; }
+
+  .group + .group { margin-top: 10px; }
+  .group h2 { margin: 0 0 2px; }
+  .group ul { list-style: none; margin: 0; padding: 0; }
+
+  .item {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin: 0 -6px; padding: 7px 6px; border-radius: calc(var(--radius) - 6px);
+  }
+  .item:hover { background: var(--paper-2); }
+  .body { flex: 1; min-width: 0; }
+  .title {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+    font-size: 14px; line-height: 1.35; color: var(--ink); overflow-wrap: anywhere;
+  }
+  button.title {
+    max-width: 100%; padding: 0; margin: 0; border: 0; background: transparent;
+    text-align: left; cursor: pointer; border-radius: 4px;
+  }
+  button.title:hover { text-decoration: underline; text-decoration-color: var(--neutral); text-underline-offset: 3px; }
+  .meta { display: flex; flex-wrap: wrap; margin-top: 2px; font-size: 12px; line-height: 1.4; color: var(--muted-ink); }
+  .meta > span + span::before { content: "\00b7"; padding: 0 6px; color: var(--neutral); }
+  .key { font: 500 11px/1.55 var(--font-mono); letter-spacing: 0.01em; }
+  .late { color: var(--signal); }
+  .soon { color: var(--bloom-deep); }
+
+  .pill {
+    flex: none; max-width: 40%; margin-top: 1px; padding: 2px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font: 500 11.5px/1.35 var(--font-ui); border-radius: 999px; border: 1px solid transparent;
+  }
+  .pill.g0 { color: var(--bloom-deep); background: var(--bloom-wash); }
+  .pill.g1 { color: var(--muted-ink); background: var(--paper-2); }
+  .item:hover .pill.g1 { background: var(--paper-3); }
+  .pill.g2 { color: var(--neutral); border-color: var(--rule); }
+  .item.done .title { color: var(--neutral); }
+  .item.done .meta { opacity: 0.8; }
+  @container (max-width: 260px) { .pill { display: none; } }
+
+  .empty { margin: 0; font-size: 14px; color: var(--muted-ink); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="w">
+  <header class="top">
+    <span class="label">Work</span>
+    <span class="label" id="count"></span>
+  </header>
+  <div class="chips" id="chips" role="group" aria-label="Show work from" hidden></div>
+  <p class="empty" id="empty" hidden>Nothing here yet. Connect Jira, Linear or GitHub and mine will fill this in.</p>
+  <div class="list" id="list" aria-label="Work items"></div>
+</main>
+<script>
+(() => {
+  const C = 'work'
+  const root = document.documentElement
+  if (!root.dataset.place) root.dataset.place = mine.place || 'conversation'
+
+  const $ = (id) => document.getElementById(id)
+  const list = $('list'), chips = $('chips'), empty = $('empty'), count = $('count')
+  const fmtWeekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
+  const fmtDay = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' })
+  const GROUPS = ['Doing', 'To do', 'Done']
+  const GROUP_OF = new Map([['doing', 0], ['todo', 1], ['done', 2]])
+
+  let docs = []
+  let filter = '' // a service name, or '' for all
+  let seq = 0
+  let shownDay = ''
+
+  const str = (v) => (v == null ? '' : String(v)).trim()
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag)
+    if (cls) e.className = cls
+    if (text != null) e.textContent = text
+    return e
+  }
+  const canOpen = (d) => !!d.url && typeof mine.open === 'function'
+
+  // a local date from "YYYY-MM-DD", or the local day of a full ISO time
+  const day = (v) => {
+    const s = str(v)
+    if (!s) return null
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+    const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(s)
+    return isNaN(d) ? null : d
+  }
+  const dayNum = (d) => Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5)
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+  // statusGroup when the integration sends it, otherwise a guess from the status text
+  function groupOf(d) {
+    const g = GROUP_OF.get(str(d.statusGroup).toLowerCase())
+    if (g != null) return g
+    const s = str(d.status)
+    if (/done|closed|resolved|merged|complete|shipped|released|cancel|won'?t/i.test(s)) return 2
+    if (/progress|review|doing|active|started|testing|\bqa\b|blocked|develop/i.test(s)) return 0
+    return 1
+  }
+
+  function dueOf(due, done) {
+    if (!due || done) return null
+    const diff = dayNum(due) - dayNum(new Date())
+    if (diff < 0) return { text: 'Was due ' + fmtDay.format(due), cls: 'late' }
+    if (diff === 0) return { text: 'Due today', cls: 'soon' }
+    if (diff === 1) return { text: 'Due tomorrow', cls: 'soon' }
+    if (diff < 7) return { text: 'Due ' + fmtWeekday.format(due) }
+    return { text: 'Due ' + fmtDay.format(due) }
+  }
+
+  // sample data is written around one day: move it so the preview always lands on today
+  function rebase(all) {
+    let latest = null
+    for (const d of all) {
+      const c = day(d.changed)
+      if (c && (!latest || c > latest)) latest = c
+    }
+    if (!latest) return all
+    const shift = dayNum(new Date()) - dayNum(latest)
+    const move = (v) => {
+      const s = str(v)
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+      if (m) return ymd(new Date(+m[1], +m[2] - 1, +m[3] + shift))
+      const t = Date.parse(s)
+      return isNaN(t) ? v : new Date(t + shift * 864e5).toISOString()
+    }
+    return all.map((d) => ({ ...d, due: move(d.due), changed: move(d.changed) }))
+  }
+
+  function drawChips(services, all) {
+    chips.hidden = services.length < 2
+    chips.replaceChildren()
+    if (chips.hidden) return
+    const make = (value, name, n) => {
+      const b = el('button', 'chip')
+      b.type = 'button'
+      b.dataset.key = 'chip:' + value
+      b.setAttribute('aria-pressed', String(filter === value))
+      b.append(name, el('span', 'n', String(n)))
+      b.addEventListener('click', () => { filter = value; draw() })
+      chips.append(b)
+    }
+    const open = (x) => x.g !== 2
+    make('', 'All', all.filter(open).length)
+    for (const s of services) make(s, s, all.filter((x) => open(x) && str(x.d.service) === s).length)
+  }
+
+  function row(x, showService) {
+    const { d, g, due } = x
+    const li = el('li', 'item' + (g === 2 ? ' done' : ''))
+    const body = el('div', 'body')
+    const name = str(d.title) || str(d.key) || 'Untitled'
+    let title
+    if (canOpen(d)) {
+      title = el('button', 'title', name)
+      title.type = 'button'
+      title.dataset.key = 'open:' + d.id
+      title.title = 'Open' + (str(d.service) ? ' in ' + str(d.service) : '')
+      title.addEventListener('click', () => mine.open(String(d.url)))
+    } else {
+      title = el('div', 'title', name)
+    }
+    body.append(title)
+
+    const meta = el('div', 'meta')
+    if (str(d.key)) meta.append(el('span', 'key', str(d.key)))
+    if (str(d.project)) meta.append(el('span', '', str(d.project)))
+    const dueText = dueOf(due, g === 2)
+    if (dueText) meta.append(el('span', dueText.cls || '', dueText.text))
+    if (g !== 2 && /urgent|highest|critical|blocker|\bhigh\b|\bp[01]\b/i.test(str(d.priority))) meta.append(el('span', 'late', str(d.priority)))
+    if (showService && str(d.service)) meta.append(el('span', '', str(d.service)))
+    if (meta.childNodes.length) body.append(meta)
+    li.append(body)
+
+    const status = str(d.status) || GROUPS[g]
+    const pill = el('span', 'pill g' + g, status)
+    pill.title = status
+    li.append(pill)
+    return li
+  }
+
+  function draw() {
+    shownDay = new Date().toDateString()
+    const all = docs.map((d) => ({ d, g: groupOf(d), due: day(d.due) }))
+
+    const tally = new Map()
+    for (const x of all) {
+      const s = str(x.d.service)
+      if (s) tally.set(s, (tally.get(s) || 0) + 1)
+    }
+    const services = [...tally.keys()].sort((a, b) => tally.get(b) - tally.get(a) || a.localeCompare(b))
+    if (filter && !tally.has(filter)) filter = ''
+
+    const focusKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.key : ''
+    drawChips(services, all)
+
+    const t = (x) => (x.due ? x.due.getTime() : Infinity)
+    const shown = all
+      .filter((x) => !filter || str(x.d.service) === filter)
+      .sort((a, b) =>
+        a.g - b.g ||
+        t(a) - t(b) ||
+        (Date.parse(b.d.changed) || 0) - (Date.parse(a.d.changed) || 0) ||
+        str(a.d.title).localeCompare(str(b.d.title)))
+
+    list.replaceChildren()
+    const showService = !filter && services.length > 1
+    let ul = null
+    let last = -1
+    for (const x of shown) {
+      if (x.g !== last) {
+        last = x.g
+        const sec = el('section', 'group')
+        const h = el('h2', 'label', GROUPS[x.g])
+        h.id = 'g' + x.g
+        ul = el('ul')
+        ul.setAttribute('aria-labelledby', h.id)
+        sec.append(h, ul)
+        list.append(sec)
+      }
+      ul.append(row(x, showService))
+    }
+
+    if (focusKey) {
+      const back = document.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)
+      if (back) back.focus({ preventScroll: true })
+    }
+
+    const open = shown.filter((x) => x.g !== 2).length
+    count.textContent = shown.length ? (open ? `${open} open` : 'All done') : ''
+    empty.hidden = docs.length > 0
+    list.hidden = docs.length === 0
+  }
+
+  async function load() {
+    const mySeq = ++seq
+    try {
+      const got = await mine.data.list(C)
+      if (mySeq !== seq) return
+      const clean = Array.isArray(got) ? got.filter((d) => d && d.id) : []
+      docs = mine.preview ? rebase(clean) : clean
+      draw()
+    } catch {
+      empty.hidden = false
+      empty.textContent = 'Could not load your work.'
+    }
+  }
+
+  // arrow keys move between the service chips
+  chips.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+    const all = [...chips.querySelectorAll('.chip')]
+    const i = all.indexOf(document.activeElement)
+    if (i < 0) return
+    e.preventDefault()
+    const next = all[(i + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length]
+    next.focus()
+    next.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  })
+
+  mine.data.watch(C, load)
+  load()
+  setInterval(() => { if (new Date().toDateString() !== shownDay) draw() }, 60e3)
+})()
+</script>
+</body>
+</html>

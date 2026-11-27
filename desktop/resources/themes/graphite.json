@@ -1,0 +1,64 @@
+{
+  "name": "Graphite",
+  "description": "Near-monochrome greys, square corners and monospaced labels, with one small cobalt accent. Quiet and technical, so the work is the only colour on screen.",
+  "theme": {
+    "name": "Graphite",
+    "light": {
+      "background": "oklch(97% 0.002 250)",
+      "surface": "oklch(99.5% 0.001 250)",
+      "subtle": "oklch(94% 0.003 250)",
+      "subtle-strong": "oklch(90% 0.004 250)",
+      "border": "oklch(85% 0.004 250)",
+      "text": "oklch(20% 0.005 250)",
+      "text-muted": "oklch(38% 0.006 250)",
+      "text-subtle": "oklch(49% 0.006 250)",
+      "solid": "oklch(22% 0.005 250)",
+      "solid-hover": "oklch(31% 0.005 250)",
+      "solid-border": "oklch(38% 0.005 250)",
+      "on-solid": "oklch(97% 0.002 250)",
+      "on-solid-muted": "oklch(78% 0.004 250)",
+      "accent": "oklch(52% 0.2 262)",
+      "on-accent": "oklch(98.5% 0.004 250)",
+      "accent-strong": "oklch(50% 0.2 262)",
+      "accent-wash": "oklch(94% 0.028 262)",
+      "danger": "oklch(52% 0.2 27)",
+      "focus": "oklch(50% 0.2 262)",
+      "code-background": "oklch(21% 0.005 250)",
+      "code-text": "oklch(94% 0.002 250)"
+    },
+    "dark": {
+      "background": "oklch(15.5% 0.002 250)",
+      "surface": "oklch(19% 0.003 250)",
+      "subtle": "oklch(22% 0.003 250)",
+      "subtle-strong": "oklch(27.5% 0.004 250)",
+      "border": "oklch(30.5% 0.004 250)",
+      "text": "oklch(94% 0.002 250)",
+      "text-muted": "oklch(79% 0.003 250)",
+      "text-subtle": "oklch(67% 0.004 250)",
+      "solid": "oklch(29% 0.004 250)",
+      "solid-hover": "oklch(35% 0.004 250)",
+      "solid-border": "oklch(41% 0.004 250)",
+      "on-solid": "oklch(96% 0.002 250)",
+      "on-solid-muted": "oklch(79% 0.004 250)",
+      "accent": "oklch(72% 0.15 260)",
+      "on-accent": "oklch(15% 0.02 262)",
+      "accent-strong": "oklch(74% 0.14 260)",
+      "accent-wash": "oklch(25% 0.04 260)",
+      "danger": "oklch(70% 0.17 27)",
+      "focus": "oklch(74% 0.14 260)",
+      "code-background": "oklch(11.5% 0.002 250)",
+      "code-text": "oklch(93% 0.002 250)"
+    },
+    "fonts": {
+      "display": "'IBM Plex Mono', ui-monospace, Consolas, monospace",
+      "ui": "'IBM Plex Mono', ui-monospace, Consolas, monospace",
+      "body": "'IBM Plex Sans', 'Segoe UI', ui-sans-serif, system-ui, sans-serif",
+      "mono": "'IBM Plex Mono', ui-monospace, Consolas, monospace",
+      "google": [
+        "IBM Plex Mono:ital,wght@0,400;0,500;0,600;1,400",
+        "IBM Plex Sans:ital,wght@0,400;0,500;0,600;0,700;1,400"
+      ]
+    },
+    "radius": "2px"
+  }
+}

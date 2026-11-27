@@ -9,7 +9,7 @@ import { getSecret, setSecret } from './secrets'
 // Each approval is the content's hash, signed with a key kept in the system
 // keychain, so an agent that can write files still can't approve its own work.
 
-export type Kind = 'command' | 'widget'
+export type Kind = 'command' | 'widget' | 'source'
 
 const file = () => join(app.getPath('userData'), 'approvals.json')
 const KEY = 'approvals.key'

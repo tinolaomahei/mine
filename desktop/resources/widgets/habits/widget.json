@@ -1,0 +1,8 @@
+{
+  "title": "Habits",
+  "description": "A habit tracker: each habit against the last seven days, tick a day to mark it done, with the current streak per habit. Documents in \"habits\": { name: string, days: string[] } where days lists the local dates it was done as \"YYYY-MM-DD\". Mark today done with patch(\"habits\", id, { days: [...days, today] }).",
+  "examples": ["show my habits", "open the habit tracker", "did I keep up my habits this week", "track a new habit"],
+  "data": ["habits"],
+  "size": { "w": 5, "h": 3 },
+  "minSize": { "w": 4, "h": 2 }
+}

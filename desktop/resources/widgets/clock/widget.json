@@ -1,0 +1,8 @@
+{
+  "title": "Clock",
+  "description": "A large clock showing the current time, with the weekday and date beneath. Follows the person's locale for 12 or 24 hour time. Uses no data.",
+  "examples": ["show the time", "put a clock on this screen", "what time is it", "open the clock"],
+  "data": [],
+  "size": { "w": 3, "h": 2 },
+  "minSize": { "w": 2, "h": 2 }
+}

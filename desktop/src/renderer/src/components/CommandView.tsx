@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, File, Folder, FolderOpen, Maximize2, RotateCw } from 'lucide-react'
+import { ArrowUp, File, Folder, FolderOpen, Maximize2 } from 'lucide-react'
 import type { CommandView as View, FileEntry } from '@shared/commands'
 import { useAbilities } from '@/lib/abilities'
 import { cn } from '@/lib/utils'
-import { Approval } from './Approval'
 import { bytes, date, FileBody, FileHeader, iconButton, parentOf, useFile } from './FilePreview'
 import { Markdown } from './Markdown'
+import { WidgetFrame } from './WidgetFrame'
 
 // Views commands and agents show inside the conversation. They sit in the
 // thread like anything else: quiet frame, theme colours, no chrome.
@@ -212,89 +212,6 @@ function HtmlView({ view }: { view: Extract<View, { type: 'html' }> }) {
   )
 }
 
-/** A live widget, sandboxed and offline, talking to mine only through its bridge. */
-function WidgetFrame({ name, props }: { name: string; props?: Record<string, unknown> }) {
-  const { widgets, run, ask } = useAbilities()
-  const w = widgets.find((x) => x.name === name)
-  const ref = useRef<HTMLIFrameElement>(null)
-  const [height, setHeight] = useState(96)
-  const [error, setError] = useState<string | null>(null)
-  const [nonce, setNonce] = useState(0)
-  const post = (m: unknown) => ref.current?.contentWindow?.postMessage(m, '*')
-
-  useEffect(() => {
-    if (!w?.approved) return
-    const allowed = new Set(w.data)
-    const onMessage = async (e: MessageEvent) => {
-      if (!ref.current || e.source !== ref.current.contentWindow) return
-      const m = e.data as { mine?: number; id?: number; method?: string; args?: unknown[]; event?: string; height?: number; message?: string }
-      if (!m?.mine) return
-      if (m.event === 'height') return setHeight(Math.min(640, Math.max(32, Number(m.height) || 0)))
-      if (m.event === 'error') return setError(String(m.message))
-      if (!m.id || !m.method) return
-      const args = m.args ?? []
-      const reply = (ok: boolean, value?: unknown, err?: string) => post({ mine: 1, id: m.id, ok, value, error: err })
-      try {
-        if (m.method.startsWith('data.')) {
-          const op = m.method.slice(5) as 'list' | 'get' | 'put' | 'patch' | 'remove'
-          const c = String(args[0])
-          if (!allowed.has(c)) throw new Error(`This widget didn’t ask for the “${c}” data, so it can’t use it.`)
-          reply(true, await window.mine.data.call(op, args))
-        } else if (m.method === 'run') {
-          const r = await run(String(args[0]), (args[1] ?? {}) as Record<string, string>)
-          if (r.error) throw new Error(r.error)
-          reply(true, { say: r.say, view: r.view })
-        } else if (m.method === 'ask') {
-          ask(String(args[0] ?? ''))
-          reply(true, true)
-        } else throw new Error(`Unknown call ${m.method}`)
-      } catch (err) {
-        reply(false, undefined, (err as Error).message)
-      }
-    }
-    window.addEventListener('message', onMessage)
-    const offData = window.mine.data.onChange((c) => allowed.has(c) && post({ mine: 1, event: 'data', collection: c }))
-    const offTheme = window.mine.theme.onChange(() => post({ mine: 1, event: 'theme' }))
-    return () => {
-      window.removeEventListener('message', onMessage)
-      offData()
-      offTheme()
-    }
-  }, [w, run, ask])
-
-  if (!w) return <p className="text-sm text-muted-foreground">There’s no widget called {name} any more.</p>
-  if (w.error) return <p className="font-mono text-[11.5px] text-signal">Widget {name} is broken: {w.error}</p>
-  if (!w.approved) return <Approval item="widget" name={name} />
-
-  return (
-    <figure className={cn(frame, 'group/widget relative')} aria-label={w.title}>
-      <button
-        type="button"
-        onClick={() => {
-          setError(null)
-          setNonce((n) => n + 1)
-        }}
-        aria-label={`Reload ${w.title}`}
-        title={`Reload ${w.title}`}
-        className="absolute top-1.5 right-1.5 z-10 grid size-7 place-items-center rounded-full bg-surface text-neutral opacity-0 transition-opacity group-hover/widget:opacity-100 hover:bg-paper-2 hover:text-ink focus-visible:opacity-100"
-      >
-        <RotateCw className="size-3.5" />
-      </button>
-      <iframe
-        key={nonce}
-        ref={ref}
-        title={w.title}
-        sandbox="allow-scripts allow-forms"
-        referrerPolicy="no-referrer"
-        src={`mine-widget://${name}/index.html#${encodeURIComponent(JSON.stringify(props ?? {}))}`}
-        style={{ height }}
-        className="block w-full border-0"
-      />
-      {error && <p className="border-t border-rule/70 px-3.5 py-2 font-mono text-[11px] text-signal">{error}</p>}
-    </figure>
-  )
-}
-
 export function CommandView({ view, onChange }: { view: View; onChange?: (v: View) => void }) {
   switch (view.type) {
     case 'files':
@@ -318,6 +235,6 @@ export function CommandView({ view, onChange }: { view: View; onChange?: (v: Vie
     case 'html':
       return <HtmlView view={view} />
     case 'widget':
-      return <WidgetFrame name={view.name} props={view.props} />
+      return <WidgetFrame id={view.name} props={view.props} />
   }
 }

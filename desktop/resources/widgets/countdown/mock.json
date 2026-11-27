@@ -1,0 +1,42 @@
+{
+  "props": {},
+  "data": {
+    "countdowns": [
+      {
+        "id": "c1",
+        "title": "Sione's birthday",
+        "date": "2026-12-03",
+        "createdAt": 1793599200000,
+        "updatedAt": 1793599200000
+      },
+      {
+        "id": "c2",
+        "title": "Christmas",
+        "date": "2026-12-25",
+        "createdAt": 1793476800000,
+        "updatedAt": 1793476800000
+      },
+      {
+        "id": "c3",
+        "title": "Flight to Rarotonga",
+        "date": "2027-01-14",
+        "createdAt": 1792308600000,
+        "updatedAt": 1792308600000
+      },
+      {
+        "id": "c4",
+        "title": "Car registration due",
+        "date": "2027-02-02",
+        "createdAt": 1795129200000,
+        "updatedAt": 1795129200000
+      },
+      {
+        "id": "c5",
+        "title": "Half marathon",
+        "date": "2026-11-22",
+        "createdAt": 1788548400000,
+        "updatedAt": 1788548400000
+      }
+    ]
+  }
+}

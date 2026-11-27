@@ -1,0 +1,53 @@
+{
+  "id": "asana",
+  "name": "Asana",
+  "what": "Tasks and projects",
+  "group": "Work",
+  "colour": "#F06A6A",
+  "opens": [
+    "app.asana.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.asana.com/v2/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Asana",
+      "client": "asana"
+    },
+    {
+      "kind": "api",
+      "label": "Use a personal access token",
+      "base": "https://app.asana.com/api/1.0",
+      "hosts": [
+        "app.asana.com"
+      ],
+      "auth": "fields",
+      "fields": [
+        {
+          "key": "token",
+          "label": "Personal access token",
+          "secret": true
+        }
+      ],
+      "headers": {
+        "Authorization": "Bearer {{token}}",
+        "Accept": "application/json"
+      },
+      "test": {
+        "path": "/users/me",
+        "account": "data.name"
+      }
+    }
+  ],
+  "steps": {
+    "1": [
+      {
+        "kind": "link",
+        "label": "Make a personal access token in the Asana developer console",
+        "url": "https://app.asana.com/0/my-apps",
+        "detail": "Choose Create new token and copy it."
+      }
+    ]
+  }
+}

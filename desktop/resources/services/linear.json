@@ -1,0 +1,18 @@
+{
+  "id": "linear",
+  "name": "Linear",
+  "what": "Issues, cycles and projects",
+  "group": "Work",
+  "colour": "#5E6AD2",
+  "opens": [
+    "linear.app"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.linear.app/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Linear"
+    }
+  ]
+}

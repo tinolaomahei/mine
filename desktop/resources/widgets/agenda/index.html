@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agenda</title>
+<style>
+  :root:is([data-place=screen], [data-place=preview]),
+  :root:is([data-place=screen], [data-place=preview]) body { height: 100%; }
+  :root:is([data-place=screen], [data-place=preview]) body { overflow: hidden; }
+
+  .w { display: flex; flex-direction: column; gap: 10px; padding: 14px; container-type: inline-size; }
+  :root:is([data-place=screen], [data-place=preview]) .w { height: 100%; container-type: size; }
+
+  .label {
+    font: 500 10.5px/1.3 var(--font-mono); letter-spacing: 0.02em;
+    text-transform: uppercase; color: var(--neutral);
+  }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex: none; }
+
+  .list {
+    margin: 0 -6px; padding: 0 6px;
+    flex: 1 1 auto; min-height: 0; overflow: auto;
+    scrollbar-width: thin; scrollbar-color: var(--rule) transparent;
+  }
+  :root:not([data-place=screen]):not([data-place=preview]) .list { max-height: 360px; }
+
+  .day + .day { margin-top: 8px; }
+  .day h2 {
+    position: sticky; top: 0; z-index: 1; display: flex; align-items: baseline; gap: 8px;
+    margin: 0; padding: 2px 0 4px; background: var(--surface);
+  }
+  .day h2 .name { color: var(--muted-ink); }
+  .day.today h2 .name { color: var(--bloom-deep); }
+  .day ul { list-style: none; margin: 0; padding: 0; }
+
+  .item {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin: 0 -6px; padding: 6px; border-radius: calc(var(--radius) - 6px);
+  }
+  .item:hover { background: var(--paper-2); }
+  .item.now { background: var(--bloom-wash); }
+  .when {
+    flex: none; width: 4.9em; padding-top: 1px;
+    font-size: 13px; line-height: 1.35; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink);
+  }
+  .when .end { display: block; font-size: 12px; color: var(--neutral); }
+  .when.allday { font-size: 12px; color: var(--muted-ink); }
+  .body { flex: 1; min-width: 0; }
+  .title {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+    font-size: 14px; line-height: 1.35; color: var(--ink); overflow-wrap: anywhere;
+  }
+  button.title {
+    max-width: 100%; padding: 0; margin: 0; border: 0; background: transparent;
+    text-align: left; cursor: pointer; border-radius: 4px;
+  }
+  button.title:hover { text-decoration: underline; text-decoration-color: var(--neutral); text-underline-offset: 3px; }
+  .meta { display: flex; flex-wrap: wrap; margin-top: 1px; font-size: 12px; line-height: 1.4; color: var(--muted-ink); }
+  .meta > span { min-width: 0; overflow-wrap: anywhere; }
+  .meta > span + span::before { content: "\00b7"; padding: 0 6px; color: var(--neutral); }
+  .item.past .when, .item.past .body { opacity: 0.55; }
+
+  .mark {
+    flex: none; margin-top: 1px; padding: 2px 8px; white-space: nowrap;
+    font: 500 11.5px/1.35 var(--font-ui); border-radius: 999px;
+  }
+  .item.now .mark { color: var(--on-bloom); background: var(--bloom); }
+  .item.next .mark { color: var(--bloom-deep); background: var(--bloom-wash); }
+  @container (max-width: 250px) { .when { width: 4.3em; font-size: 12px; } .meta { display: none; } }
+
+  .more {
+    display: block; padding: 4px 6px; margin: 0 -6px 2px; border: 0; background: transparent; cursor: pointer;
+    font: 12.5px var(--font-ui); color: var(--muted-ink); border-radius: calc(var(--radius) - 6px);
+  }
+  .more:hover { color: var(--ink); background: var(--paper-2); }
+  .quiet { margin: 2px 0 4px; font-size: 13px; color: var(--muted-ink); }
+
+  .empty { margin: 0; font-size: 14px; color: var(--muted-ink); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="w">
+  <header class="top">
+    <span class="label">Agenda</span>
+    <span class="label" id="count"></span>
+  </header>
+  <p class="empty" id="empty" hidden>Nothing here yet. Connect Google Calendar or Outlook and mine will fill this in.</p>
+  <div class="list" id="list" aria-label="Agenda"></div>
+</main>
+<script>
+(() => {
+  const C = 'agenda'
+  const DAYS = 7 // today and the six after it
+  const root = document.documentElement
+  if (!root.dataset.place) root.dataset.place = mine.place || 'conversation'
+
+  const $ = (id) => document.getElementById(id)
+  const list = $('list'), empty = $('empty'), count = $('count')
+  const fmtTime = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
+  const fmtWeekday = new Intl.DateTimeFormat(undefined, { weekday: 'long' })
+  const fmtDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' })
+  const fmtShort = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+
+  let docs = []
+  let seq = 0
+  let showEarlier = false
+
+  const str = (v) => (v == null ? '' : String(v)).trim()
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag)
+    if (cls) e.className = cls
+    if (text != null) e.textContent = text
+    return e
+  }
+  const canOpen = (d) => !!d.url && typeof mine.open === 'function'
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
+  const dayNum = (d) => Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5)
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
+  // the local midnight of the date a string starts with
+  const localDay = (s) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s)
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null
+  }
+
+  // one event as times in ms; all-day ones run midnight to midnight, end exclusive
+  function norm(d) {
+    const s = str(d.start)
+    if (!s) return null
+    const allDay = d.allDay === true || DATE_ONLY.test(s)
+    if (allDay) {
+      const a = localDay(s)
+      if (!a) return null
+      let b = localDay(str(d.end))
+      if (!b || b <= a) b = addDays(a, 1)
+      return { d, allDay, start: a.getTime(), end: b.getTime(), days: dayNum(b) - dayNum(a) }
+    }
+    const a = Date.parse(s)
+    if (isNaN(a)) return null
+    let b = Date.parse(str(d.end))
+    if (isNaN(b) || b < a) b = a
+    return { d, allDay, start: a, end: b }
+  }
+
+  // sample events are written as times of day around one date: move that date to today
+  // and keep each event's wall-clock time, wherever the person is
+  function rebase(all) {
+    let first = null
+    for (const d of all) {
+      const a = localDay(str(d.start))
+      if (a && (!first || a < first)) first = a
+    }
+    if (!first) return all
+    const shift = dayNum(new Date()) - dayNum(first)
+    const move = (v) => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(str(v))
+      if (!m) return v
+      const d = new Date(+m[1], +m[2] - 1, +m[3] + shift, +(m[4] || 0), +(m[5] || 0), +(m[6] || 0))
+      return m[4] == null ? ymd(d) : d.toISOString()
+    }
+    return all.map((d) => ({ ...d, start: move(d.start), end: move(d.end) }))
+  }
+
+  function until(ms) {
+    const m = Math.max(0, Math.round(ms / 60e3))
+    if (m < 1) return 'Starting'
+    if (m < 60) return `In ${m}m`
+    if (m < 180) return `In ${Math.floor(m / 60)}h` + (m % 60 ? ` ${m % 60}m` : '')
+    if (m < 24 * 60) return `In ${Math.round(m / 60)}h`
+    return 'Next'
+  }
+
+  function row(e, ctx) {
+    const { d } = e
+    const li = el('li', 'item')
+    const when = el('div', 'when')
+    if (e.allDay) {
+      when.classList.add('allday')
+      when.textContent = 'All day'
+    } else if (e.start < ctx.d0) {
+      when.append('Until', el('span', 'end', fmtTime.format(e.end)))
+    } else {
+      when.append(fmtTime.format(e.start))
+      if (e.end > e.start) when.append(el('span', 'end', fmtTime.format(e.end)))
+    }
+    li.append(when)
+
+    const body = el('div', 'body')
+    const name = str(d.title) || 'Busy'
+    let title
+    if (canOpen(d)) {
+      title = el('button', 'title', name)
+      title.type = 'button'
+      title.dataset.key = 'open:' + d.id + ':' + ctx.i
+      title.title = 'Open' + (str(d.service) ? ' in ' + str(d.service) : '')
+      title.addEventListener('click', () => mine.open(String(d.url)))
+    } else {
+      title = el('div', 'title', name)
+    }
+    body.append(title)
+    const meta = el('div', 'meta')
+    if (e.allDay && e.days > 1) meta.append(el('span', '', `Day ${dayNum(new Date(ctx.d0)) - dayNum(new Date(e.start)) + 1} of ${e.days}`))
+    if (str(d.where)) meta.append(el('span', '', str(d.where)))
+    if (str(d.service)) meta.append(el('span', '', str(d.service)))
+    if (meta.childNodes.length) body.append(meta)
+    li.append(body)
+
+    if (ctx.current.has(e)) {
+      li.classList.add('now')
+      li.append(el('span', 'mark', 'Now'))
+    } else if (ctx.next === e) {
+      li.classList.add('next')
+      li.append(el('span', 'mark', until(e.start - ctx.now)))
+    }
+    if (ctx.past) li.classList.add('past')
+    return li
+  }
+
+  function draw() {
+    const now = Date.now()
+    const n = new Date(now)
+    const today = new Date(n.getFullYear(), n.getMonth(), n.getDate())
+    const horizon = addDays(today, DAYS).getTime()
+    const evs = docs.map(norm).filter(Boolean)
+
+    // what's on now, or failing that the next thing coming up
+    const timed = evs.filter((e) => !e.allDay)
+    const current = new Set(timed.filter((e) => e.start <= now && e.end > now))
+    let next = null
+    if (!current.size) for (const e of timed) if (e.start > now && e.start < horizon && (!next || e.start < next.start)) next = e
+
+    const focusKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.key : ''
+    list.replaceChildren()
+    let later = 0
+    let left = 0
+
+    for (let i = 0; i < DAYS; i++) {
+      const date = addDays(today, i)
+      const d0 = date.getTime()
+      const d1 = addDays(today, i + 1).getTime()
+      const on = evs
+        .filter((e) => (e.allDay ? e.start < d1 && e.end > d0 : (e.start >= d0 && e.start < d1) || (i === 0 && e.start < d0 && e.end > now)))
+        .sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start - b.start || a.end - b.end || str(a.d.title).localeCompare(str(b.d.title)))
+      if (i > 0 && !on.length) continue
+      if (i > 0) later += on.length
+
+      const sec = el('section', 'day' + (i === 0 ? ' today' : ''))
+      const h = el('h2')
+      h.id = 'day' + i
+      h.append(el('span', 'label name', i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : fmtWeekday.format(date)))
+      h.append(el('span', 'label', i < 2 ? fmtShort.format(date) : fmtDate.format(date)))
+      const ul = el('ul')
+      if (i === 0) ul.id = 'today-list'
+      ul.setAttribute('aria-labelledby', h.id)
+      sec.append(h)
+
+      const isPast = (e) => i === 0 && !e.allDay && !current.has(e) && (e.end > e.start ? e.end <= now : e.start < now)
+      const past = on.filter(isPast)
+      const rest = on.filter((e) => !isPast(e))
+      if (i === 0) left = rest.filter((e) => !e.allDay).length
+
+      if (past.length) {
+        const more = el('button', 'more', showEarlier ? 'Hide earlier' : `Show ${past.length} earlier`)
+        more.type = 'button'
+        more.dataset.key = 'earlier'
+        more.setAttribute('aria-expanded', String(showEarlier))
+        more.setAttribute('aria-controls', 'today-list')
+        more.addEventListener('click', () => { showEarlier = !showEarlier; draw() })
+        sec.append(more)
+      }
+      const shown = showEarlier ? on : rest
+      for (const e of shown) ul.append(row(e, { i, d0, now, current, next, past: past.includes(e) }))
+      if (ul.childNodes.length) sec.append(ul)
+      if (i === 0 && !rest.length) sec.append(el('p', 'quiet', on.length ? 'Nothing else on today.' : 'Nothing on today.'))
+      list.append(sec)
+    }
+    if (!later) list.append(el('p', 'quiet', 'Nothing else in the next week.'))
+
+    if (focusKey) {
+      const back = document.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)
+      if (back) back.focus({ preventScroll: true })
+    }
+
+    count.textContent = left ? `${left} left today` : ''
+    empty.hidden = docs.length > 0
+    list.hidden = docs.length === 0
+  }
+
+  async function load() {
+    const mySeq = ++seq
+    try {
+      const got = await mine.data.list(C)
+      if (mySeq !== seq) return
+      const clean = Array.isArray(got) ? got.filter((d) => d && d.id) : []
+      docs = mine.preview ? rebase(clean) : clean
+      draw()
+    } catch {
+      empty.hidden = false
+      empty.textContent = 'Could not load your agenda.'
+    }
+  }
+
+  mine.data.watch(C, load)
+  load()
+  // keep "now" and "next" honest, and roll over at midnight
+  setInterval(draw, 30e3)
+})()
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habits</title>
+<style>
+  :root:is([data-place=screen], [data-place=preview]),
+  :root:is([data-place=screen], [data-place=preview]) body { height: 100%; }
+  :root:is([data-place=screen], [data-place=preview]) body { overflow: hidden; }
+
+  .w { display: flex; flex-direction: column; gap: 10px; padding: 14px; container-type: inline-size; }
+  :root:is([data-place=screen], [data-place=preview]) .w { height: 100%; container-type: size; }
+
+  .label {
+    font: 500 10.5px/1.3 var(--font-mono); letter-spacing: 0.02em;
+    text-transform: uppercase; color: var(--neutral);
+  }
+  .bar { display: flex; align-items: center; gap: 10px; flex: none; }
+  .bar .label { flex: none; }
+
+  .field {
+    flex: 1; min-width: 0; height: 32px; padding: 0 12px;
+    font: 14px var(--font-ui); color: var(--ink);
+    background: transparent; border: 1px solid var(--rule);
+    border-radius: calc(var(--radius) - 6px); outline: none;
+  }
+  .field::placeholder { color: var(--neutral); }
+  .field:focus { border-color: var(--bloom-deep); }
+
+  .scroll {
+    flex: 1 1 auto; min-height: 0; overflow: auto; margin: 0 -6px; padding: 0 6px 2px;
+    scrollbar-width: thin; scrollbar-color: var(--rule) transparent;
+  }
+  :root:not([data-place=screen]):not([data-place=preview]) .scroll { max-height: 320px; }
+
+  .w { --cell: clamp(22px, calc((100cqw - 170px) / 9), 34px); }
+  .row {
+    display: grid; align-items: center; column-gap: 4px;
+    grid-template-columns: minmax(0, 1fr) repeat(7, var(--cell)) 26px;
+  }
+  .head { position: sticky; top: 0; z-index: 1; padding-bottom: 4px; background: var(--surface); }
+  .day {
+    display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 2px 0;
+    font: 500 10.5px/1.2 var(--font-mono); text-transform: uppercase; color: var(--neutral);
+    border-radius: calc(var(--radius) - 8px);
+  }
+  .day b { font-weight: 400; font-size: 9.5px; opacity: 0.8; }
+  .day.today { color: var(--bloom-deep); background: var(--bloom-wash); }
+
+  .habit { min-height: 40px; margin: 0 -6px; padding: 3px 0 3px 6px; border-radius: calc(var(--radius) - 6px); }
+  .habit:hover { background: var(--paper-2); }
+  .name { min-width: 0; padding-right: 6px; }
+  .name div { font-size: 14.5px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .streak { font: 500 10px/1.3 var(--font-mono); letter-spacing: 0.02em; text-transform: uppercase; color: var(--neutral); }
+  .streak.on { color: var(--bloom-deep); }
+
+  .cell {
+    display: grid; place-items: center; width: var(--cell); height: var(--cell); padding: 0;
+    color: var(--on-bloom); background: transparent; cursor: pointer;
+    border: 1px solid var(--rule); border-radius: calc(var(--radius) - 7px);
+  }
+  .cell:hover { background: var(--paper-3); }
+  .cell.today { border-color: var(--bloom-deep); }
+  .cell[aria-pressed=true] { background: var(--bloom); border-color: var(--bloom); }
+  .cell svg { width: 62%; height: 62%; max-width: 16px; max-height: 16px; opacity: 0; }
+  .cell[aria-pressed=true] svg { opacity: 1; }
+
+  .icon {
+    display: grid; place-items: center; width: 26px; height: 26px; padding: 0;
+    color: var(--neutral); background: transparent; border: 0; cursor: pointer;
+    border-radius: calc(var(--radius) - 7px); opacity: 0;
+  }
+  .icon:hover { color: var(--ink); background: var(--paper-3); }
+  .icon svg { width: 14px; height: 14px; }
+  .habit:hover .icon, .habit:focus-within .icon { opacity: 1; }
+  @media (hover: none) { .icon { opacity: 1; } }
+
+  .empty { margin: 4px 0 0; font-size: 14px; color: var(--muted-ink); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .field:focus-visible { outline: none; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="w">
+  <div class="bar">
+    <span class="label">Habits</span>
+    <input class="field" id="add" placeholder="Add a habit" aria-label="Add a habit" maxlength="80" autocomplete="off">
+  </div>
+  <div class="scroll">
+    <div class="row head" id="head" aria-hidden="true"></div>
+    <div id="list" role="list" aria-label="Habits"></div>
+    <p class="empty" id="empty" hidden>No habits yet. Add one above.</p>
+  </div>
+</main>
+<script>
+(() => {
+  const C = 'habits'
+  const root = document.documentElement
+  if (!root.dataset.place) root.dataset.place = mine.place || 'conversation'
+
+  const $ = (id) => document.getElementById(id)
+  const list = $('list'), add = $('add'), empty = $('empty'), head = $('head')
+  const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+  const X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+  const initial = new Intl.DateTimeFormat(undefined, { weekday: 'narrow' })
+  const longDay = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const back = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - n)
+
+  let docs = []
+  let today = ''
+  let week = [] // the last seven days, oldest first, as Dates
+  const rows = new Map()
+  let seq = 0
+
+  function streak(set) {
+    const now = new Date()
+    let n = 0
+    // today not done yet doesn't break a streak; count back from yesterday then
+    let i = set.has(iso(now)) ? 0 : 1
+    while (set.has(iso(back(now, i)))) { n++; i++ }
+    return n
+  }
+
+  function drawHead() {
+    const now = new Date()
+    today = iso(now)
+    week = Array.from({ length: 7 }, (_, i) => back(now, 6 - i))
+    head.innerHTML = '<span></span>' + week.map((d) =>
+      `<span class="day${iso(d) === today ? ' today' : ''}">${initial.format(d)}<b>${d.getDate()}</b></span>`).join('') + '<span></span>'
+    for (const li of rows.values()) li.remove()
+    rows.clear()
+  }
+
+  function makeRow(id) {
+    const row = document.createElement('div')
+    row.className = 'row habit'
+    row.setAttribute('role', 'listitem')
+    row.innerHTML = '<div class="name"><div></div><span class="streak"></span></div>' +
+      week.map((d) => `<button class="cell${iso(d) === today ? ' today' : ''}" type="button" data-day="${iso(d)}">${TICK}</button>`).join('') +
+      `<button class="icon" type="button">${X}</button>`
+    row.addEventListener('click', (e) => {
+      const cell = e.target.closest('.cell')
+      if (cell) return toggle(id, cell.dataset.day)
+      if (e.target.closest('.icon')) remove(id)
+    })
+    return row
+  }
+
+  function toggle(id, day) {
+    const d = docs.find((x) => x.id === id)
+    if (!d) return
+    const set = new Set(d.days)
+    set.has(day) ? set.delete(day) : set.add(day)
+    d.days = [...set].sort()
+    draw()
+    mine.data.patch(C, id, { days: d.days }).catch(load)
+  }
+
+  function remove(id) {
+    const i = docs.findIndex((x) => x.id === id)
+    const next = docs[i + 1] || docs[i - 1]
+    docs = docs.filter((x) => x.id !== id)
+    draw()
+    const target = next && rows.get(next.id)
+    ;(target ? target.querySelector('.cell.today') : add).focus()
+    mine.data.remove(C, id).catch(load)
+  }
+
+  function draw() {
+    if (iso(new Date()) !== today) drawHead()
+    const focused = document.activeElement
+    const keep = new Set(docs.map((d) => d.id))
+    for (const [id, row] of rows) if (!keep.has(id)) { row.remove(); rows.delete(id) }
+    let prev = null
+    for (const d of docs) {
+      let row = rows.get(d.id)
+      if (!row) { row = makeRow(d.id); rows.set(d.id, row) }
+      const name = String(d.name ?? '')
+      const set = new Set(d.days)
+      const n = streak(set)
+      row.querySelector('.name div').textContent = name
+      row.querySelector('.name div').title = name
+      const s = row.querySelector('.streak')
+      s.textContent = n ? `Streak ${n}` : 'No streak'
+      s.classList.toggle('on', n > 0)
+      row.querySelectorAll('.cell').forEach((c, i) => {
+        const on = set.has(c.dataset.day)
+        c.setAttribute('aria-pressed', String(on))
+        c.setAttribute('aria-label', `${name}, ${longDay.format(week[i])}`)
+      })
+      row.querySelector('.icon').setAttribute('aria-label', `Remove "${name}"`)
+      const want = prev ? prev.nextSibling : list.firstChild
+      if (want !== row) list.insertBefore(row, want)
+      prev = row
+    }
+    if (focused && focused.isConnected && document.activeElement !== focused) focused.focus({ preventScroll: true })
+    empty.hidden = docs.length > 0
+    head.hidden = docs.length === 0
+  }
+
+  async function load() {
+    const mySeq = ++seq
+    try {
+      const got = await mine.data.list(C)
+      if (mySeq !== seq) return
+      docs = (Array.isArray(got) ? got : [])
+        .filter((d) => d && d.id)
+        .map((d) => ({ ...d, days: Array.isArray(d.days) ? d.days.map(String) : [] }))
+        .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0))
+      draw()
+    } catch {
+      empty.hidden = false
+      empty.textContent = 'Could not load habits.'
+    }
+  }
+
+  add.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter' || e.isComposing) return
+    const name = add.value.trim()
+    if (!name) return
+    add.value = ''
+    try { await mine.data.put(C, { name, days: [] }) } catch { add.value = name }
+    load()
+  })
+
+  drawHead()
+  mine.data.watch(C, load)
+  load()
+  setInterval(() => { if (iso(new Date()) !== today) draw() }, 60e3)
+})()
+</script>
+</body>
+</html>

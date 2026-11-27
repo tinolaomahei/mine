@@ -1,0 +1,18 @@
+{
+  "id": "zapier",
+  "name": "Zapier",
+  "what": "Thousands of other apps, through your Zapier account",
+  "group": "Automation",
+  "colour": "#FF4F00",
+  "opens": [
+    "zapier.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.zapier.com/api/mcp/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Zapier"
+    }
+  ]
+}

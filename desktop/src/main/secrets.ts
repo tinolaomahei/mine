@@ -44,3 +44,11 @@ export function setSecret(name: string, value: string) {
   all[name] = safeStorage.encryptString(value).toString('base64')
   writeFileSync(file(), JSON.stringify(all, null, 2))
 }
+
+/** Forget every secret whose name starts with a prefix (e.g. a connection's). */
+export function deleteSecrets(prefix: string) {
+  for (const k of [...memory.keys()]) if (k.startsWith(prefix)) memory.delete(k)
+  const all = readAll()
+  const keep = Object.fromEntries(Object.entries(all).filter(([k]) => !k.startsWith(prefix)))
+  if (Object.keys(keep).length !== Object.keys(all).length) writeFileSync(file(), JSON.stringify(keep, null, 2))
+}

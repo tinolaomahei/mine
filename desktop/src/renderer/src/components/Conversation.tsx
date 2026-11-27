@@ -46,7 +46,10 @@ export function Conversation({
   onUndo,
   onHand,
   onSetView,
+  compact,
 }: {
+  /** Tighter, for the small window over a screen. */
+  compact?: boolean
   turns: Turn[]
   harness: string
   onStopTool?: (id: string) => void
@@ -91,7 +94,11 @@ export function Conversation({
       }}
       className="scroll-soft min-h-0 flex-1 overflow-y-auto"
     >
-      <ol ref={list} className="mx-auto flex max-w-[42rem] flex-col gap-8 px-6 pt-8 pb-6" aria-label="Conversation">
+      <ol
+        ref={list}
+        className={cn('flex flex-col', compact ? 'gap-6 px-4 pt-4 pb-4' : 'mx-auto max-w-[42rem] gap-8 px-6 pt-8 pb-6')}
+        aria-label="Conversation"
+      >
         {turns.map((t) => {
           if (t.kind === 'note')
             return (

@@ -1,0 +1,19 @@
+{
+  "id": "slack",
+  "name": "Slack",
+  "what": "Team chat and mentions",
+  "group": "Messages",
+  "colour": "#4A154B",
+  "opens": [
+    "*.slack.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.slack.com/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Slack",
+      "client": "slack"
+    }
+  ]
+}

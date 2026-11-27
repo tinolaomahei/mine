@@ -1,0 +1,65 @@
+{
+  "name": "Kōwhai",
+  "description": "Charcoal and cream with the bright yellow of the kōwhai flower. Confident and a little editorial, with a serif headline over a crisp sans.",
+  "theme": {
+    "name": "Kōwhai",
+    "light": {
+      "background": "oklch(97.5% 0.013 95)",
+      "surface": "oklch(99.5% 0.006 95)",
+      "subtle": "oklch(94.5% 0.02 92)",
+      "subtle-strong": "oklch(90.5% 0.028 90)",
+      "border": "oklch(86.5% 0.026 88)",
+      "text": "oklch(21% 0.008 75)",
+      "text-muted": "oklch(37% 0.01 75)",
+      "text-subtle": "oklch(48% 0.012 75)",
+      "solid": "oklch(22% 0.008 75)",
+      "solid-hover": "oklch(30% 0.01 75)",
+      "solid-border": "oklch(38% 0.01 75)",
+      "on-solid": "oklch(97% 0.02 95)",
+      "on-solid-muted": "oklch(80% 0.03 92)",
+      "accent": "oklch(86% 0.17 93)",
+      "on-accent": "oklch(21% 0.02 75)",
+      "accent-strong": "oklch(50% 0.125 62)",
+      "accent-wash": "oklch(94% 0.065 95)",
+      "danger": "oklch(52% 0.19 27)",
+      "focus": "oklch(48% 0.17 262)",
+      "code-background": "oklch(22% 0.008 75)",
+      "code-text": "oklch(95% 0.03 95)"
+    },
+    "dark": {
+      "background": "oklch(16.5% 0.006 85)",
+      "surface": "oklch(20% 0.007 85)",
+      "subtle": "oklch(23% 0.008 85)",
+      "subtle-strong": "oklch(28.5% 0.01 85)",
+      "border": "oklch(31.5% 0.01 85)",
+      "text": "oklch(95% 0.014 95)",
+      "text-muted": "oklch(80% 0.013 90)",
+      "text-subtle": "oklch(68% 0.014 88)",
+      "solid": "oklch(30% 0.01 85)",
+      "solid-hover": "oklch(36% 0.012 85)",
+      "solid-border": "oklch(42% 0.012 85)",
+      "on-solid": "oklch(96% 0.012 95)",
+      "on-solid-muted": "oklch(80% 0.016 90)",
+      "accent": "oklch(86% 0.165 93)",
+      "on-accent": "oklch(20% 0.02 75)",
+      "accent-strong": "oklch(86% 0.155 92)",
+      "accent-wash": "oklch(26% 0.04 92)",
+      "danger": "oklch(71% 0.16 27)",
+      "focus": "oklch(75% 0.12 255)",
+      "code-background": "oklch(12.5% 0.004 85)",
+      "code-text": "oklch(94% 0.03 95)"
+    },
+    "fonts": {
+      "display": "'Instrument Serif', 'Iowan Old Style', Georgia, ui-serif, serif",
+      "ui": "'Instrument Sans', 'Segoe UI', ui-sans-serif, system-ui, sans-serif",
+      "body": "'Instrument Sans', 'Segoe UI', ui-sans-serif, system-ui, sans-serif",
+      "mono": "'DM Mono', ui-monospace, Consolas, monospace",
+      "google": [
+        "Instrument Serif:ital@0;1",
+        "Instrument Sans:ital,wght@0,400..700;1,400..700",
+        "DM Mono:wght@400;500"
+      ]
+    },
+    "radius": "0.25rem"
+  }
+}

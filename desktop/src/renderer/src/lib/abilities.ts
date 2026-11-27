@@ -56,6 +56,8 @@ export type Abilities = {
   ask: (text: string) => void
   /** Open the full-screen explorer at a folder, optionally with a file open. */
   openExplorer: (root: string, file?: string) => void
+  /** Pin a widget to a screen (the current one, or the last one visited). */
+  addToScreen: (widget: string, props?: Record<string, unknown>) => void
 }
 
 export const AbilitiesContext = createContext<Abilities>({
@@ -64,6 +66,7 @@ export const AbilitiesContext = createContext<Abilities>({
   run: async () => ({ error: 'Not ready' }),
   ask: () => {},
   openExplorer: () => {},
+  addToScreen: () => {},
 })
 
 export const useAbilities = () => useContext(AbilitiesContext)

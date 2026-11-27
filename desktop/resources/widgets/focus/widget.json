@@ -1,0 +1,8 @@
+{
+  "title": "Focus timer",
+  "description": "A pomodoro timer: 25 minutes of focus, then a 5 minute break, with start, pause, reset and skip. Each completed focus session is logged and it shows how many were done today. Documents in \"focus\": { minutes: number, endedAt: number (ms timestamp) }, one per completed focus session.",
+  "examples": ["start a focus timer", "open the pomodoro", "I want to focus for a bit", "show my focus sessions today"],
+  "data": ["focus"],
+  "size": { "w": 3, "h": 3 },
+  "minSize": { "w": 2, "h": 2 }
+}

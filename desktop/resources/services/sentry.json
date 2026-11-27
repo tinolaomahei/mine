@@ -1,0 +1,19 @@
+{
+  "id": "sentry",
+  "name": "Sentry",
+  "what": "Errors and performance",
+  "group": "Code",
+  "colour": "#362D59",
+  "opens": [
+    "*.sentry.io",
+    "sentry.io"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.sentry.dev/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Sentry"
+    }
+  ]
+}

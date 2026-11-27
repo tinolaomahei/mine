@@ -1,0 +1,65 @@
+{
+  "name": "Dusk",
+  "description": "Evening violet with an ember-orange glow, set in a chunky, friendly grotesque. Warm and a bit playful, for the end of the day.",
+  "theme": {
+    "name": "Dusk",
+    "light": {
+      "background": "oklch(96.5% 0.016 300)",
+      "surface": "oklch(99% 0.008 300)",
+      "subtle": "oklch(93.5% 0.025 300)",
+      "subtle-strong": "oklch(89.5% 0.035 300)",
+      "border": "oklch(85.5% 0.035 300)",
+      "text": "oklch(23% 0.07 295)",
+      "text-muted": "oklch(39% 0.07 295)",
+      "text-subtle": "oklch(49% 0.06 295)",
+      "solid": "oklch(30% 0.12 292)",
+      "solid-hover": "oklch(37% 0.13 292)",
+      "solid-border": "oklch(44% 0.12 292)",
+      "on-solid": "oklch(97% 0.015 300)",
+      "on-solid-muted": "oklch(83% 0.05 300)",
+      "accent": "oklch(73% 0.165 52)",
+      "on-accent": "oklch(21% 0.05 40)",
+      "accent-strong": "oklch(52% 0.16 48)",
+      "accent-wash": "oklch(93% 0.045 55)",
+      "danger": "oklch(50% 0.19 22)",
+      "focus": "oklch(50% 0.18 262)",
+      "code-background": "oklch(25% 0.08 292)",
+      "code-text": "oklch(95% 0.02 300)"
+    },
+    "dark": {
+      "background": "oklch(17% 0.014 295)",
+      "surface": "oklch(20.5% 0.017 295)",
+      "subtle": "oklch(23.5% 0.02 295)",
+      "subtle-strong": "oklch(29% 0.024 295)",
+      "border": "oklch(32% 0.024 295)",
+      "text": "oklch(95% 0.01 300)",
+      "text-muted": "oklch(80% 0.02 300)",
+      "text-subtle": "oklch(68% 0.03 300)",
+      "solid": "oklch(32% 0.08 292)",
+      "solid-hover": "oklch(38% 0.09 292)",
+      "solid-border": "oklch(45% 0.085 292)",
+      "on-solid": "oklch(96% 0.012 300)",
+      "on-solid-muted": "oklch(82% 0.03 300)",
+      "accent": "oklch(76% 0.15 55)",
+      "on-accent": "oklch(20% 0.04 40)",
+      "accent-strong": "oklch(77% 0.14 58)",
+      "accent-wash": "oklch(28% 0.05 50)",
+      "danger": "oklch(70% 0.18 22)",
+      "focus": "oklch(76% 0.13 255)",
+      "code-background": "oklch(13% 0.01 295)",
+      "code-text": "oklch(94% 0.012 300)"
+    },
+    "fonts": {
+      "display": "'Bricolage Grotesque', 'Segoe UI', ui-sans-serif, system-ui, sans-serif",
+      "ui": "'DM Sans', 'Segoe UI', ui-sans-serif, system-ui, sans-serif",
+      "body": "'DM Sans', 'Segoe UI', ui-sans-serif, system-ui, sans-serif",
+      "mono": "'Space Mono', ui-monospace, Consolas, monospace",
+      "google": [
+        "Bricolage Grotesque:opsz,wght@12..96,400..800",
+        "DM Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700",
+        "Space Mono:wght@400;700"
+      ]
+    },
+    "radius": "1rem"
+  }
+}

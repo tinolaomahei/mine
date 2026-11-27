@@ -1,0 +1,35 @@
+{
+  "props": {},
+  "data": {
+    "focus": [
+      {
+        "id": "f1",
+        "minutes": 25,
+        "endedAt": 1795640700000,
+        "createdAt": 1795640700000,
+        "updatedAt": 1795640700000
+      },
+      {
+        "id": "f2",
+        "minutes": 25,
+        "endedAt": 1795657200000,
+        "createdAt": 1795657200000,
+        "updatedAt": 1795657200000
+      },
+      {
+        "id": "f3",
+        "minutes": 25,
+        "endedAt": 1795722900000,
+        "createdAt": 1795722900000,
+        "updatedAt": 1795722900000
+      },
+      {
+        "id": "f4",
+        "minutes": 25,
+        "endedAt": 1795724700000,
+        "createdAt": 1795724700000,
+        "updatedAt": 1795724700000
+      }
+    ]
+  }
+}

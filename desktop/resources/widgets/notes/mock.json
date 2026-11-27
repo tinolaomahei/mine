@@ -1,0 +1,15 @@
+{
+  "props": {
+    "instance": "sample"
+  },
+  "data": {
+    "notes": [
+      {
+        "id": "sample",
+        "text": "Ideas for the team offsite\n\n- Morning: walk up Mt Victoria, coffee after\n- Ask Mere if the boardroom at the Wharf is free on the 11th\n- Budget is about $1,200, food included\n- Someone to run the retro that isn't me\n\nPhone the caterer back before Tuesday.",
+        "createdAt": 1795569600000,
+        "updatedAt": 1795722120000
+      }
+    ]
+  }
+}

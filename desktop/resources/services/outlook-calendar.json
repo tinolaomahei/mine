@@ -1,0 +1,128 @@
+{
+  "id": "outlook-calendar",
+  "name": "Outlook Calendar",
+  "what": "Microsoft 365 meetings and events",
+  "group": "Calendar",
+  "colour": "#0F6CBD",
+  "opens": [
+    "outlook.office.com",
+    "outlook.live.com",
+    "teams.microsoft.com"
+  ],
+  "ways": [
+    {
+      "kind": "api",
+      "label": "Sign in with Microsoft",
+      "base": "https://graph.microsoft.com/v1.0",
+      "hosts": [
+        "graph.microsoft.com"
+      ],
+      "auth": "oauth",
+      "oauth": {
+        "authorize": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+        "token": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        "scopes": [
+          "offline_access",
+          "User.Read",
+          "Calendars.Read"
+        ],
+        "client": "microsoft"
+      },
+      "test": {
+        "path": "/me",
+        "account": "displayName"
+      }
+    },
+    {
+      "kind": "api",
+      "label": "Use a published calendar link",
+      "base": "{{address}}",
+      "hosts": [
+        "outlook.office365.com",
+        "outlook.live.com"
+      ],
+      "auth": "fields",
+      "fields": [
+        {
+          "key": "address",
+          "label": "ICS link",
+          "placeholder": "https://outlook.office365.com/owa/calendar/…/calendar.ics",
+          "secret": true,
+          "url": true
+        }
+      ],
+      "headers": {},
+      "test": {
+        "path": ""
+      }
+    }
+  ],
+  "steps": {
+    "1": [
+      {
+        "kind": "link",
+        "label": "Open Outlook’s shared calendar settings",
+        "url": "https://outlook.office.com/calendar/options/calendar/SharedCalendars"
+      },
+      {
+        "kind": "confirm",
+        "label": "Under Publish a calendar, choose your calendar and “Can view all details”, then Publish and copy the ICS link"
+      }
+    ]
+  },
+  "sources": {
+    "0": [
+      {
+        "title": "My calendar, next 7 days",
+        "what": "Events from now to a week out.",
+        "call": {
+          "path": "/me/calendarView",
+          "query": {
+            "startDateTime": "{{$now}}",
+            "endDateTime": "{{$in:7d}}",
+            "$top": "100",
+            "$orderby": "start/dateTime"
+          }
+        },
+        "every": 15,
+        "into": "agenda",
+        "pick": {
+          "items": "value",
+          "id": "id",
+          "fields": {
+            "title": "subject",
+            "start": "{{start.dateTime}}Z",
+            "end": "{{end.dateTime}}Z",
+            "allDay": "isAllDay",
+            "where": "location.displayName",
+            "url": "webLink",
+            "service": "=Outlook"
+          }
+        }
+      }
+    ],
+    "1": [
+      {
+        "title": "My calendar",
+        "what": "Events from your published calendar, a day back to two weeks out.",
+        "call": {
+          "path": "",
+          "format": "ics"
+        },
+        "every": 30,
+        "into": "agenda",
+        "pick": {
+          "fields": {
+            "title": "title",
+            "start": "start",
+            "end": "end",
+            "allDay": "allDay",
+            "where": "where",
+            "url": "url",
+            "service": "=Outlook"
+          }
+        }
+      }
+    ]
+  }
+}

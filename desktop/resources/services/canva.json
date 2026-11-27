@@ -1,0 +1,18 @@
+{
+  "id": "canva",
+  "name": "Canva",
+  "what": "Designs and brand kits",
+  "group": "Design",
+  "colour": "#00C4CC",
+  "opens": [
+    "www.canva.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.canva.com/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Canva"
+    }
+  ]
+}

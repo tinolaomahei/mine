@@ -1,0 +1,129 @@
+{
+  "id": "google-calendar",
+  "name": "Google Calendar",
+  "what": "Your meetings and events",
+  "group": "Calendar",
+  "colour": "#1A73E8",
+  "opens": [
+    "calendar.google.com",
+    "meet.google.com"
+  ],
+  "ways": [
+    {
+      "kind": "api",
+      "label": "Sign in with Google",
+      "base": "https://www.googleapis.com/calendar/v3",
+      "hosts": [
+        "www.googleapis.com"
+      ],
+      "auth": "oauth",
+      "oauth": {
+        "authorize": "https://accounts.google.com/o/oauth2/v2/auth",
+        "token": "https://oauth2.googleapis.com/token",
+        "scopes": [
+          "https://www.googleapis.com/auth/calendar.readonly"
+        ],
+        "client": "google",
+        "extra": {
+          "access_type": "offline",
+          "prompt": "consent"
+        }
+      },
+      "test": {
+        "path": "/calendars/primary",
+        "account": "id"
+      }
+    },
+    {
+      "kind": "api",
+      "label": "Use your calendar’s secret address",
+      "base": "{{address}}",
+      "hosts": [
+        "calendar.google.com"
+      ],
+      "auth": "fields",
+      "fields": [
+        {
+          "key": "address",
+          "label": "Secret address in iCal format",
+          "placeholder": "https://calendar.google.com/calendar/ical/…/basic.ics",
+          "secret": true,
+          "url": true
+        }
+      ],
+      "headers": {},
+      "test": {
+        "path": ""
+      }
+    }
+  ],
+  "steps": {
+    "1": [
+      {
+        "kind": "link",
+        "label": "Open your Google Calendar settings",
+        "url": "https://calendar.google.com/calendar/u/0/r/settings"
+      },
+      {
+        "kind": "confirm",
+        "label": "Pick your calendar on the left, then copy “Secret address in iCal format” from Integrate calendar",
+        "detail": "It’s read-only. Anyone with it can see your events, so mine keeps it encrypted."
+      }
+    ]
+  },
+  "sources": {
+    "0": [
+      {
+        "title": "My calendar, next 7 days",
+        "what": "Events on your main calendar from now to a week out.",
+        "call": {
+          "path": "/calendars/primary/events",
+          "query": {
+            "singleEvents": "true",
+            "orderBy": "startTime",
+            "timeMin": "{{$now}}",
+            "timeMax": "{{$in:7d}}",
+            "maxResults": "100"
+          }
+        },
+        "every": 15,
+        "into": "agenda",
+        "pick": {
+          "items": "items",
+          "id": "id",
+          "fields": {
+            "title": "summary",
+            "start": "{{start.dateTime}}{{start.date}}",
+            "end": "{{end.dateTime}}{{end.date}}",
+            "where": "location",
+            "url": "htmlLink",
+            "service": "=Google Calendar"
+          }
+        }
+      }
+    ],
+    "1": [
+      {
+        "title": "My calendar",
+        "what": "Events from your calendar’s secret address, a day back to two weeks out.",
+        "call": {
+          "path": "",
+          "format": "ics"
+        },
+        "every": 30,
+        "into": "agenda",
+        "pick": {
+          "fields": {
+            "title": "title",
+            "start": "start",
+            "end": "end",
+            "allDay": "allDay",
+            "where": "where",
+            "url": "url",
+            "service": "=Google Calendar"
+          }
+        }
+      }
+    ]
+  }
+}

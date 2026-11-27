@@ -1,0 +1,19 @@
+{
+  "id": "hubspot",
+  "name": "HubSpot",
+  "what": "Contacts, deals and tickets",
+  "group": "Business",
+  "colour": "#FF5C35",
+  "opens": [
+    "app.hubspot.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.hubspot.com/",
+      "auth": "oauth",
+      "label": "Sign in with HubSpot",
+      "client": "hubspot"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "id": "confluence",
+  "name": "Confluence",
+  "what": "Team pages and docs",
+  "group": "Docs",
+  "colour": "#1868DB",
+  "opens": [
+    "*.atlassian.net"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.atlassian.com/v1/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Atlassian"
+    },
+    {
+      "kind": "api",
+      "label": "Use an API token",
+      "base": "{{site}}/wiki",
+      "hosts": [
+        "{{site}}"
+      ],
+      "auth": "fields",
+      "fields": [
+        {
+          "key": "site",
+          "label": "Your Confluence address",
+          "placeholder": "yourteam.atlassian.net",
+          "url": true
+        },
+        {
+          "key": "email",
+          "label": "The email you sign in with",
+          "placeholder": "you@company.com"
+        },
+        {
+          "key": "token",
+          "label": "API token",
+          "secret": true,
+          "help": "mine keeps it encrypted and only sends it to your Confluence."
+        }
+      ],
+      "headers": {
+        "Authorization": "Basic {{base64:email:token}}",
+        "Accept": "application/json"
+      },
+      "test": {
+        "path": "/rest/api/user/current",
+        "account": "displayName"
+      }
+    }
+  ],
+  "steps": {
+    "1": [
+      {
+        "kind": "link",
+        "label": "Make an API token in your Atlassian account",
+        "url": "https://id.atlassian.com/manage-profile/security/api-tokens"
+      }
+    ]
+  }
+}

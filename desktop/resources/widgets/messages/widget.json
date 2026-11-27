@@ -1,0 +1,8 @@
+{
+  "title": "Messages",
+  "description": "Things waiting for the person from Slack, Gmail, Outlook and other services mine syncs: mentions, direct messages and emails, newest first with unread ones emphasised. The person can mark one read. Documents in \"messages\": { sender?: string, subject?: string, preview?: string, at?: ISO datetime, unread?: boolean, channel?: string, url?: string, service?: string }. Mark one read with patch(\"messages\", id, { unread: false }).",
+  "examples": ["show my messages", "what's waiting for me", "any new Slack mentions", "have I got unread emails"],
+  "data": ["messages"],
+  "size": { "w": 4, "h": 5 },
+  "minSize": { "w": 3, "h": 3 }
+}

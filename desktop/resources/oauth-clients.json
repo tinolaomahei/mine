@@ -1,0 +1,5 @@
+{
+  "note": "Apps mine is registered as, for services that only let registered apps sign people in (GitHub, Slack, Asana, HubSpot, Google, Microsoft). Client ids only: never put a client secret in this file, it's public. A file with the same name in mine's user data folder adds to this one and can hold secrets. cimd is the https address of mine's OAuth client ID metadata document, once it's hosted.",
+  "cimd": "https://mine.computer/oauth/client.json",
+  "clients": {}
+}

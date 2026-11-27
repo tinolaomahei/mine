@@ -1,0 +1,111 @@
+{
+  "id": "github",
+  "name": "GitHub",
+  "what": "Code, pull requests and issues",
+  "group": "Code",
+  "colour": "#1F2328",
+  "opens": [
+    "github.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "auth": "oauth",
+      "label": "Sign in with GitHub",
+      "client": "github"
+    },
+    {
+      "kind": "api",
+      "label": "Use a personal access token",
+      "base": "https://api.github.com",
+      "hosts": [
+        "api.github.com"
+      ],
+      "auth": "fields",
+      "fields": [
+        {
+          "key": "token",
+          "label": "Personal access token",
+          "secret": true,
+          "help": "A fine-grained token with read access is enough. mine only sends it to api.github.com."
+        }
+      ],
+      "headers": {
+        "Authorization": "Bearer {{token}}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28"
+      },
+      "test": {
+        "path": "/user",
+        "account": "login"
+      }
+    }
+  ],
+  "steps": {
+    "1": [
+      {
+        "kind": "link",
+        "label": "Make a fine-grained personal access token",
+        "url": "https://github.com/settings/personal-access-tokens/new",
+        "detail": "Read-only access to the repositories you want is enough."
+      }
+    ]
+  },
+  "sources": {
+    "1": [
+      {
+        "title": "Pull requests waiting for my review",
+        "what": "Open pull requests where your review is requested.",
+        "call": {
+          "path": "/search/issues",
+          "query": {
+            "q": "is:open is:pr review-requested:@me",
+            "per_page": "50"
+          }
+        },
+        "every": 10,
+        "into": "work",
+        "pick": {
+          "items": "items",
+          "id": "id",
+          "fields": {
+            "title": "title",
+            "key": "#{{number}}",
+            "status": "=Review requested",
+            "statusGroup": "=todo",
+            "url": "html_url",
+            "changed": "updated_at",
+            "service": "=GitHub"
+          }
+        }
+      },
+      {
+        "title": "My open GitHub issues",
+        "what": "Open issues assigned to you.",
+        "call": {
+          "path": "/search/issues",
+          "query": {
+            "q": "is:open is:issue assignee:@me",
+            "per_page": "50"
+          }
+        },
+        "every": 15,
+        "into": "work",
+        "pick": {
+          "items": "items",
+          "id": "id",
+          "fields": {
+            "title": "title",
+            "key": "#{{number}}",
+            "status": "=Open",
+            "statusGroup": "=todo",
+            "url": "html_url",
+            "changed": "updated_at",
+            "service": "=GitHub"
+          }
+        }
+      }
+    ]
+  }
+}

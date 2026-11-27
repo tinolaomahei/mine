@@ -1,0 +1,8 @@
+{
+  "title": "To-dos",
+  "description": "The person's to-do list: add items, tick them off, delete them and clear the done ones. Open items show first, done ones after, struck through. Documents in \"todos\": { text: string, done: boolean }. Add one with put(\"todos\", { text, done: false }); tick one with patch(\"todos\", id, { done: true }).",
+  "examples": ["show my to-dos", "open my to-do list", "what do I need to do", "add a to-do list to this screen"],
+  "data": ["todos"],
+  "size": { "w": 4, "h": 4 },
+  "minSize": { "w": 3, "h": 3 }
+}

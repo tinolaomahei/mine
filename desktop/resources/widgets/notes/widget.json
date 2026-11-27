@@ -1,0 +1,8 @@
+{
+  "title": "Note",
+  "description": "A single plain-text scratch note that saves as you type. Documents in \"notes\": { text: string }. The document id is the placement's instance id when it sits on a screen, otherwise \"scratch\"; each placed note keeps its own document. To change what a note shows, put(\"notes\", { id, text }).",
+  "examples": ["open a note", "give me a scratch pad", "jot something down", "add a note to this screen"],
+  "data": ["notes"],
+  "size": { "w": 4, "h": 3 },
+  "minSize": { "w": 3, "h": 2 }
+}

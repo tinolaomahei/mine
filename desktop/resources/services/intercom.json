@@ -1,0 +1,18 @@
+{
+  "id": "intercom",
+  "name": "Intercom",
+  "what": "Customer conversations",
+  "group": "Messages",
+  "colour": "#1F8DED",
+  "opens": [
+    "app.intercom.com"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.intercom.com/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Intercom"
+    }
+  ]
+}

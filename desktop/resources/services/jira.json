@@ -1,0 +1,97 @@
+{
+  "id": "jira",
+  "name": "Jira",
+  "what": "Issues, sprints and projects",
+  "group": "Work",
+  "colour": "#1868DB",
+  "opens": [
+    "*.atlassian.net"
+  ],
+  "ways": [
+    {
+      "kind": "mcp",
+      "url": "https://mcp.atlassian.com/v1/mcp",
+      "auth": "oauth",
+      "label": "Sign in with Atlassian"
+    },
+    {
+      "kind": "api",
+      "label": "Use an API token",
+      "base": "{{site}}",
+      "hosts": [
+        "{{site}}"
+      ],
+      "auth": "fields",
+      "fields": [
+        {
+          "key": "site",
+          "label": "Your Jira address",
+          "placeholder": "yourteam.atlassian.net",
+          "url": true
+        },
+        {
+          "key": "email",
+          "label": "The email you sign in with",
+          "placeholder": "you@company.com"
+        },
+        {
+          "key": "token",
+          "label": "API token",
+          "secret": true,
+          "help": "Paste the token you just made. mine keeps it encrypted and only sends it to your Jira."
+        }
+      ],
+      "headers": {
+        "Authorization": "Basic {{base64:email:token}}",
+        "Accept": "application/json"
+      },
+      "test": {
+        "path": "/rest/api/3/myself",
+        "account": "displayName"
+      }
+    }
+  ],
+  "steps": {
+    "1": [
+      {
+        "kind": "link",
+        "label": "Make an API token in your Atlassian account",
+        "url": "https://id.atlassian.com/manage-profile/security/api-tokens",
+        "detail": "Choose Create API token, give it a name like “mine”, and copy it."
+      }
+    ]
+  },
+  "sources": {
+    "1": [
+      {
+        "title": "My open Jira issues",
+        "what": "Issues assigned to you that aren’t done, newest change first.",
+        "call": {
+          "path": "/rest/api/3/search/jql",
+          "query": {
+            "jql": "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC",
+            "fields": "summary,status,project,duedate,priority,updated",
+            "maxResults": "50"
+          }
+        },
+        "every": 15,
+        "into": "work",
+        "pick": {
+          "items": "issues",
+          "id": "key",
+          "fields": {
+            "title": "fields.summary",
+            "key": "key",
+            "status": "fields.status.name",
+            "project": "fields.project.name",
+            "due": "fields.duedate",
+            "priority": "fields.priority.name",
+            "changed": "fields.updated",
+            "url": "{{@site}}/browse/{{key}}",
+            "service": "=Jira"
+          }
+        }
+      }
+    ]
+  }
+}

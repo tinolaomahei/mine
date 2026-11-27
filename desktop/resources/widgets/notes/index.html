@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Note</title>
+<style>
+  :root:is([data-place=screen], [data-place=preview]),
+  :root:is([data-place=screen], [data-place=preview]) body { height: 100%; }
+  :root:is([data-place=screen], [data-place=preview]) body { overflow: hidden; }
+
+  .w { display: flex; flex-direction: column; gap: 8px; padding: 14px; }
+  :root:is([data-place=screen], [data-place=preview]) .w { height: 100%; }
+
+  .label {
+    font: 500 10.5px/1.3 var(--font-mono); letter-spacing: 0.02em;
+    text-transform: uppercase; color: var(--neutral);
+  }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex: none; }
+  .w:focus-within .name { color: var(--bloom-deep); }
+  .status.error { color: var(--signal); }
+
+  textarea {
+    flex: 1 1 auto; min-height: 0; width: 100%; margin: 0; padding: 0;
+    resize: none; border: 0; outline: none; background: transparent;
+    font: 16px/1.55 var(--font-body); color: var(--ink);
+    scrollbar-width: thin; scrollbar-color: var(--rule) transparent;
+  }
+  textarea::placeholder { color: var(--neutral); }
+  :root:not([data-place=screen]):not([data-place=preview]) textarea { height: 200px; flex: none; }
+</style>
+</head>
+<body>
+<main class="w">
+  <header class="top">
+    <span class="label name">Note</span>
+    <span class="label status" id="status" aria-live="polite"></span>
+  </header>
+  <textarea id="text" aria-label="Note" placeholder="Write anything. It saves as you type." spellcheck="true"></textarea>
+</main>
+<script>
+(() => {
+  const C = 'notes'
+  const ID = String((mine.props && mine.props.instance) || 'scratch')
+  const root = document.documentElement
+  if (!root.dataset.place) root.dataset.place = mine.place || 'conversation'
+
+  const ta = document.getElementById('text')
+  const status = document.getElementById('status')
+  let saved = null // the text as last stored, by anyone
+  let timer = 0
+  let failed = false
+
+  const show = () => {
+    status.classList.toggle('error', failed)
+    if (failed) status.textContent = 'Could not save'
+    else if (saved === null) status.textContent = ''
+    else status.textContent = ta.value === saved ? 'Saved' : 'Saving…'
+  }
+
+  async function save() {
+    clearTimeout(timer)
+    timer = 0
+    const text = ta.value
+    if (text === saved) return show()
+    const before = saved
+    saved = text // so the watch event for this write is recognised as ours
+    try {
+      await mine.data.put(C, { id: ID, text })
+      failed = false
+    } catch {
+      saved = before
+      failed = true
+    }
+    show()
+  }
+
+  async function load() {
+    let doc = null
+    try { doc = await mine.data.get(C, ID) } catch { doc = null }
+    const text = doc && typeof doc.text === 'string' ? doc.text : ''
+    if (text === saved) return show()
+    // someone else changed it: take theirs unless the person has unsaved typing here
+    const editing = document.activeElement === ta && (timer || (saved !== null && ta.value !== saved))
+    if (editing) return show()
+    const at = ta.selectionStart
+    ta.value = text
+    if (document.activeElement === ta) ta.setSelectionRange(Math.min(at, text.length), Math.min(at, text.length))
+    saved = text
+    show()
+  }
+
+  ta.addEventListener('input', () => {
+    failed = false
+    clearTimeout(timer)
+    timer = setTimeout(save, 400)
+    show()
+  })
+  ta.addEventListener('blur', () => { if (timer) save() })
+  addEventListener('pagehide', () => { if (timer) save() })
+
+  mine.data.watch(C, load)
+  load()
+})()
+</script>
+</body>
+</html>

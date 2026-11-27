@@ -48,7 +48,8 @@ export async function runAgent(
   const { argv, stdin } = a.args({ prompt: req.prompt, sessionRef, ctx })
   const child = spawn(launch.file, [...launch.prefix, ...argv], {
     cwd,
-    env: { ...process.env, ...launch.env, NO_COLOR: '1', FORCE_COLOR: '0' },
+    // MINE_RUN_ID reaches mine's MCP server, so a permission request can be tied to this run
+    env: { ...process.env, ...launch.env, NO_COLOR: '1', FORCE_COLOR: '0', MINE_RUN_ID: req.runId },
     windowsHide: true,
     stdio: ['pipe', 'pipe', 'pipe'],
   })

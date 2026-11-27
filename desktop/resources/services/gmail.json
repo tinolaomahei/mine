@@ -1,0 +1,37 @@
+{
+  "id": "gmail",
+  "name": "Gmail",
+  "what": "Email",
+  "group": "Messages",
+  "colour": "#EA4335",
+  "opens": [
+    "mail.google.com"
+  ],
+  "ways": [
+    {
+      "kind": "api",
+      "label": "Sign in with Google",
+      "base": "https://gmail.googleapis.com/gmail/v1",
+      "hosts": [
+        "gmail.googleapis.com"
+      ],
+      "auth": "oauth",
+      "oauth": {
+        "authorize": "https://accounts.google.com/o/oauth2/v2/auth",
+        "token": "https://oauth2.googleapis.com/token",
+        "scopes": [
+          "https://www.googleapis.com/auth/gmail.readonly"
+        ],
+        "client": "google",
+        "extra": {
+          "access_type": "offline",
+          "prompt": "consent"
+        }
+      },
+      "test": {
+        "path": "/users/me/profile",
+        "account": "emailAddress"
+      }
+    }
+  ]
+}

@@ -69,6 +69,9 @@ export const ADAPTERS: Adapter[] = [
         // the theme tools, plus read-only access so it can study a project's brand
         '--allowedTools',
         'mcp__mine,Read,Glob,Grep',
+        // anything else that needs the person's OK is asked in mine's window
+        '--permission-prompt-tool',
+        'mcp__mine__permission_prompt',
         '--append-system-prompt',
         ctx.claude.systemPrompt,
         ...(sessionRef ? ['--resume', sessionRef] : []),

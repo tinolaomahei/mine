@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSyn
 import { homedir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { mergePatch, validatePatch, type ThemePatch } from '@shared/theme'
+import { themeSlug } from '@shared/themes'
 
 // The theme on disk. Shared by the app (which watches it) and the MCP server
 // an agent talks to (which writes it). theme.json holds only the overrides on
@@ -74,6 +75,18 @@ export function undoPatch(dir: string): boolean {
 
 export function resetPatch(dir: string) {
   commit(dir, {})
+}
+
+/** Put a theme on the person's shelf in the marketplace (dir is userData/themes), under a free name. */
+export function saveTheme(dir: string, name: string, description: string, patch: ThemePatch): { id?: string; error?: string } {
+  const errors = validatePatch(patch)
+  if (errors.length) return { error: errors.join(' ') }
+  mkdirSync(dir, { recursive: true })
+  const base = themeSlug(name)
+  let id = base
+  for (let n = 2; existsSync(join(dir, `${id}.json`)); n++) id = `${base}-${n}`
+  writeJson(join(dir, `${id}.json`), { name, description, theme: { ...patch, name } })
+  return { id }
 }
 
 /** For set_appearance: flip the app between system, light and dark. */

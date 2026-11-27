@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clock</title>
+<style>
+  :root:is([data-place=screen], [data-place=preview]),
+  :root:is([data-place=screen], [data-place=preview]) body { height: 100%; }
+  :root:is([data-place=screen], [data-place=preview]) body { overflow: hidden; }
+
+  .w {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 14px; text-align: center; container-type: inline-size;
+  }
+  :root:is([data-place=screen], [data-place=preview]) .w { height: 100%; container-type: size; }
+
+  .time {
+    display: flex; align-items: baseline; justify-content: center; gap: 0.12em;
+    margin: 0; font-family: var(--font-display); font-weight: 500;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.035em; line-height: 0.9;
+    color: var(--ink); white-space: nowrap;
+    font-size: min(64px, 34cqi);
+  }
+  .time.ampm { font-size: min(64px, 27cqi); }
+  :root:is([data-place=screen], [data-place=preview]) .time { font-size: min(35cqw, 52cqh); }
+  :root:is([data-place=screen], [data-place=preview]) .time.ampm { font-size: min(28cqw, 52cqh); }
+
+  .period {
+    font: 500 max(10.5px, 0.2em)/1 var(--font-mono); letter-spacing: 0.02em;
+    text-transform: uppercase; color: var(--neutral);
+  }
+  .date {
+    margin: 0.7em 0 0; color: var(--muted-ink); line-height: 1.3;
+    font-size: clamp(12px, 6cqi, 18px);
+  }
+  :root:is([data-place=screen], [data-place=preview]) .date {
+    margin-top: min(12px, 4cqh); font-size: clamp(12px, min(6cqw, 9cqh), 26px);
+  }
+  .day { color: var(--ink); }
+</style>
+</head>
+<body>
+<main class="w">
+  <p class="time" id="time" role="timer" aria-live="off"></p>
+  <p class="date"><span class="day" id="day"></span><span id="sep"> · </span><span id="date"></span></p>
+</main>
+<script>
+(() => {
+  const root = document.documentElement
+  if (!root.dataset.place) root.dataset.place = mine.place || 'conversation'
+
+  const time = document.getElementById('time')
+  const fmtTime = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
+  const fmtDay = new Intl.DateTimeFormat(undefined, { weekday: 'long' })
+  const fmtDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'long' })
+  let last = ''
+
+  function render() {
+    const now = new Date()
+    const parts = fmtTime.formatToParts(now)
+    const at = parts.findIndex((p) => p.type === 'dayPeriod')
+    const digits = parts.filter((p) => p.type !== 'dayPeriod').map((p) => p.value).join('').trim()
+    const period = at >= 0 ? parts[at].value : ''
+    const key = digits + period + now.toDateString()
+    if (key === last) return
+    last = key
+
+    time.textContent = ''
+    const d = document.createElement('span')
+    d.textContent = digits
+    time.append(d)
+    if (period) {
+      const p = document.createElement('span')
+      p.className = 'period'
+      p.textContent = period
+      if (at < parts.findIndex((x) => x.type === 'hour')) time.prepend(p)
+      else time.append(p)
+    }
+    time.classList.toggle('ampm', !!period)
+    time.setAttribute('aria-label', fmtTime.format(now))
+    document.getElementById('day').textContent = fmtDay.format(now)
+    document.getElementById('date').textContent = fmtDate.format(now)
+  }
+
+  render()
+  setInterval(render, 1000)
+  document.addEventListener('visibilitychange', render)
+})()
+</script>
+</body>
+</html>

@@ -81,7 +81,10 @@ export const data = {
     const docs = read(userDir, collection)
     const cur = docs[String(id)]
     if (!cur) throw new Error(`No document ${id} in ${collection}.`)
-    docs[cur.id] = { ...cur, ...plain(fields), id: cur.id, updatedAt: Date.now() }
+    const f = plain(fields)
+    // on a synced document, remember which fields were changed here so a sync keeps them
+    const local = cur.source ? { _local: [...new Set([...((cur._local as string[]) ?? []), ...Object.keys(f)])] } : {}
+    docs[cur.id] = { ...cur, ...f, ...local, id: cur.id, updatedAt: Date.now() }
     write(userDir, collection, docs)
     return docs[cur.id]
   },
@@ -91,6 +94,32 @@ export const data = {
     delete docs[String(id)]
     write(userDir, collection, docs)
     return true
+  },
+  /** Replace every document one source put in a collection with a fresh set, in one write. */
+  sync(userDir: string, collection: string, source: string, fresh: { id: string; doc: Record<string, unknown> }[]) {
+    const docs = read(userDir, collection)
+    const now = Date.now()
+    const old = new Set(Object.values(docs).filter((d) => d.source === source).map((d) => d.id))
+    for (const { id, doc } of fresh) {
+      const full = `${source}.${id}`.slice(0, 120)
+      old.delete(full)
+      const prev = docs[full]
+      // what the person changed here (marking a message read) wins over what's synced
+      const local = Array.isArray(prev?._local) ? (prev._local as string[]) : []
+      const kept = Object.fromEntries(local.filter((k) => prev && k in prev).map((k) => [k, prev![k]]))
+      docs[full] = {
+        ...plain(doc),
+        ...kept,
+        ...(local.length ? { _local: local } : {}),
+        id: full,
+        source,
+        createdAt: (prev?.createdAt as number) ?? now,
+        updatedAt: now,
+      }
+    }
+    for (const id of old) delete docs[id]
+    write(userDir, collection, docs)
+    return fresh.length
   },
   drop(userDir: string, collection: string) {
     rmSync(fileOf(userDir, collection), { force: true })

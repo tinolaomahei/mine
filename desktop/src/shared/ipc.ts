@@ -3,8 +3,14 @@
 
 import type { DecisionsSettings, DecisionsStatus, DecisionsTest, RouteContext, RouteResult } from './decisions'
 import type { Theme } from './theme'
+import type { ThemeInfo } from './themes'
+import type { ConnectionsState } from './connections'
 import type { AppCommandInfo, CommandEffect, CommandResult, CommandsState, FileListing, FilePreview, FileSaved } from './commands'
-import type { WidgetInfo } from './widgets'
+import type { Screen, WidgetInfo, WidgetMock } from './widgets'
+import type { PermissionAsk, PermissionChoice, PermissionRule } from './permissions'
+
+/** What a call that can fail answers. */
+export type Answer<T = unknown> = { ok: true; value: T } | { ok: false; error: string }
 
 export type HarnessId = 'pi' | 'claude' | 'codex' | 'gemini' | 'opencode' | 'goose' | 'cursor'
 
@@ -125,9 +131,67 @@ export interface MineApi {
     approve(name: string): Promise<WidgetInfo[]>
     remove(name: string): Promise<WidgetInfo[]>
     reveal(name: string): Promise<void>
+    /** Its sample data, for previews in the marketplace. */
+    mock(id: string): Promise<WidgetMock>
     onChange(cb: (w: WidgetInfo[]) => void): Unsubscribe
     /** An agent or command asking to show a widget. */
     onShow(cb: (req: { name: string; props: Record<string, unknown> }) => void): Unsubscribe
+  }
+  permissions: {
+    /** Requests waiting on the person right now. */
+    list(): Promise<PermissionAsk[]>
+    /** The person's answer. Only ever from a click. */
+    answer(id: string, choice: PermissionChoice): Promise<boolean>
+    /** What's always allowed, by folder. */
+    rules(): Promise<PermissionRule[]>
+    /** Forget what's always allowed (in one folder, or everywhere). */
+    forget(folder?: string): Promise<PermissionRule[]>
+    /** Stop allowing everything in a folder (agents ask again; other rules stay). */
+    stopAll(folder: string): Promise<PermissionRule[]>
+    onRules(cb: (rules: PermissionRule[]) => void): Unsubscribe
+    onAsk(cb: (a: PermissionAsk) => void): Unsubscribe
+    /** A request was answered or its run ended. */
+    onDrop(cb: (id: string) => void): Unsubscribe
+  }
+  themes: {
+    /** Every theme in the marketplace: mine's own, then the person's. */
+    list(): Promise<ThemeInfo[]>
+    /** Make one the current look. Returns an error message, or null. */
+    apply(id: string): Promise<string | null>
+    /** Keep the look on screen now as one of the person's themes. */
+    saveCurrent(name?: string, description?: string): Promise<{ id?: string; error?: string }>
+    remove(id: string): Promise<boolean>
+    onChange(cb: (t: ThemeInfo[]) => void): Unsubscribe
+  }
+  /**
+   * The tools the person uses every day. Tokens and secret fields go in and
+   * never come back out. Each call answers { ok, value } or { ok: false, error }.
+   */
+  connections: {
+    list(): Promise<ConnectionsState>
+    onChange(cb: (s: ConnectionsState) => void): Unsubscribe
+    /** Put one of mine's services on the checklist; answers its connection id. */
+    add(service: string, way?: number): Promise<Answer<string>>
+    useWay(id: string, way: number): Promise<Answer>
+    remove(id: string): Promise<Answer>
+    setField(id: string, key: string, value: string): Promise<Answer>
+    tick(id: string, step: string, done: boolean): Promise<Answer>
+    signIn(id: string): Promise<Answer<{ ok: boolean; error?: string; account?: string }>>
+    cancelSignIn(): Promise<Answer>
+    test(id: string): Promise<Answer<{ ok: boolean; error?: string; account?: string }>>
+    /** One of mine's ready-made sources, added by the person. */
+    addSource(connection: string, title: string): Promise<Answer<string>>
+    /** Only ever from an Approve button the person clicks. */
+    approveSource(id: string): Promise<Answer>
+    removeSource(id: string): Promise<Answer>
+    sync(connection?: string): Promise<Answer<number>>
+    /** Open a link in the browser, if it's to one of the person's services. */
+    open(url: string): Promise<boolean>
+  }
+  screens: {
+    list(): Promise<Screen[]>
+    /** Save every screen; returns what was kept. */
+    save(screens: Screen[]): Promise<Screen[]>
   }
   files: {
     /** One folder's contents, folders first. */
