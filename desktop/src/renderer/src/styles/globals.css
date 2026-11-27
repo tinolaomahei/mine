@@ -1,0 +1,622 @@
+/* Hallmark · custom theme: bloom (carried over from mine/landing)
+ * axes: light / grotesk-sans / chromatic-other (pink)
+ * Blush paper, plum ink, bubblegum accent, growth rings as the motif.
+ * shadcn tokens are mapped onto the Bloom palette below; components keep their
+ * stock structure and inherit the brand through these variables.
+ */
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource-variable/familjen-grotesk';
+@import '@fontsource-variable/newsreader';
+@import '@fontsource-variable/martian-mono';
+
+:root {
+  color-scheme: light;
+
+  /* The palette, fonts and radius come from the live theme (src/shared/theme.ts,
+   * injected at runtime as a <style id="mine-theme">). Only the mapping lives here. */
+
+  /* shadcn semantic tokens */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--solid);
+  --primary-foreground: var(--on-solid);
+  --secondary: var(--paper-2);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-2);
+  --muted-foreground: var(--muted-ink);
+  --accent: var(--bloom-wash);
+  --accent-foreground: var(--ink);
+  --destructive: var(--signal);
+  --border: var(--rule);
+  --input: var(--rule);
+  --ring: var(--bloom-deep);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --titlebar: 48px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --font-sans: var(--brand-font-ui);
+  --font-display: var(--brand-font-display);
+  --font-serif: var(--brand-font-body);
+  --font-mono: var(--brand-font-mono);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-paper-3: var(--paper-3);
+  --color-surface: var(--surface);
+  --color-rule: var(--rule);
+  --color-neutral: var(--neutral);
+  --color-ink: var(--ink);
+  --color-solid: var(--solid);
+  --color-solid-hover: var(--solid-hover);
+  --color-on-solid: var(--on-solid);
+  --color-on-solid-muted: var(--on-solid-muted);
+  --color-bloom: var(--bloom);
+  --color-on-bloom: var(--on-bloom);
+  --color-bloom-deep: var(--bloom-deep);
+  --color-bloom-wash: var(--bloom-wash);
+  --color-signal: var(--signal);
+  --color-focus: var(--focus);
+  --color-code-bg: var(--code-bg);
+  --color-code-fg: var(--code-fg);
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html,
+  body {
+    overflow: clip;
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    user-select: none;
+  }
+
+  ::selection {
+    background: var(--bloom);
+    color: var(--on-bloom);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+}
+
+/* ── window chrome ─────────────────────────────────────────────────────── */
+
+.titlebar {
+  height: var(--titlebar);
+  app-region: drag;
+  /* keep clear of the native window buttons */
+  padding-left: 16px;
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 12px);
+}
+
+html[data-platform='darwin'] .titlebar {
+  padding-left: 86px;
+}
+
+.titlebar button,
+.titlebar [role='combobox'],
+.no-drag {
+  app-region: no-drag;
+}
+
+/* the mark: a lowercase m and a pink dot, same as the app icon */
+.wordmark {
+  display: inline-flex;
+  font-family: var(--font-display);
+  align-items: baseline;
+  font-weight: 650;
+  font-size: 1.5rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  translate: 0 -0.06em;
+}
+
+.wordmark::after {
+  content: '';
+  width: 0.21em;
+  height: 0.21em;
+  margin-left: 0.05em;
+  border-radius: 50%;
+  background: var(--bloom-deep);
+}
+
+/* ── growth rings ──────────────────────────────────────────────────────── */
+
+.rings path {
+  fill: none;
+  stroke: var(--rule);
+  stroke-width: 1.25;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    stroke 260ms var(--ease-out),
+    opacity 260ms var(--ease-out);
+}
+
+/* ── the mic ───────────────────────────────────────────────────────────── */
+
+.voice {
+  --level: 0;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--voice-size, 15rem);
+  aspect-ratio: 1;
+  /* room for the rings to swell into, so a loud voice never hits an edge */
+  margin-block: calc(var(--voice-size, 15rem) * 0.09);
+}
+
+.voice .rings {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.voice .rings path {
+  /* outer ring tops out ~14% larger, which the margin above absorbs */
+  transform: scale(calc(1 + var(--level) * (0.03 + var(--i) * 0.022)));
+  transition:
+    transform 90ms linear,
+    stroke 260ms var(--ease-out),
+    opacity 260ms var(--ease-out);
+}
+
+.voice[data-state='listening'] .rings path {
+  stroke: var(--bloom-deep);
+  opacity: calc(1 - var(--i) * 0.13);
+}
+
+.voice[data-state='thinking'] .rings path,
+.voice[data-state='working'] .rings path {
+  stroke: var(--bloom);
+  animation: ring-breathe 1.8s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 140ms);
+}
+
+@keyframes ring-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.mic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 0;
+  background: var(--solid);
+  color: var(--bloom);
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--ease-out),
+    transform 140ms var(--ease-out),
+    color 140ms var(--ease-out);
+}
+
+.mic:hover {
+  background: var(--solid-hover);
+}
+
+.mic:active {
+  transform: scale(0.96);
+}
+
+.mic:focus-visible {
+  outline-offset: 6px;
+}
+
+.voice[data-state='listening'] .mic {
+  background: var(--bloom);
+  color: var(--on-bloom);
+}
+
+.mic:disabled {
+  cursor: progress;
+}
+
+.mic svg {
+  width: 32%;
+  height: 32%;
+}
+
+/* download progress drawn as a ring around the mic */
+.progress-ring {
+  position: absolute;
+  inset: -7px;
+  width: calc(100% + 14px);
+  height: calc(100% + 14px);
+  rotate: -90deg;
+  pointer-events: none;
+}
+
+.progress-ring circle {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.progress-ring .track {
+  stroke: var(--paper-3);
+}
+
+.progress-ring .bar {
+  stroke: var(--bloom-deep);
+  transition: stroke-dashoffset 200ms linear;
+}
+
+/* ── the two ways in: slide between speaking and typing ────────────────── */
+
+.ways {
+  /* clip sideways for the slide; leave vertical room for the rings */
+  overflow-x: clip;
+  overflow-y: visible;
+  width: 100%;
+}
+
+.ways-track {
+  display: flex;
+  width: 200%;
+  transition: transform 520ms var(--ease-out);
+}
+
+.ways[data-mode='type'] .ways-track {
+  transform: translateX(-50%);
+}
+
+.way {
+  width: 50%;
+  flex: none;
+  transition: opacity 360ms var(--ease-out);
+}
+
+.way[inert] {
+  opacity: 0;
+}
+
+/* ── composer ──────────────────────────────────────────────────────────── */
+
+.composer {
+  border-radius: 1.75rem;
+  border: 1.5px solid var(--rule);
+  background: var(--surface);
+  transition:
+    border-color 140ms var(--ease-out),
+    box-shadow 140ms var(--ease-out);
+}
+
+.composer:hover {
+  border-color: var(--neutral);
+}
+
+.composer:focus-within {
+  border-color: var(--bloom-deep);
+  box-shadow: 0 0 0 4px var(--bloom-wash);
+}
+
+.composer textarea {
+  user-select: text;
+}
+
+/* ── conversation ──────────────────────────────────────────────────────── */
+
+.prose-agent {
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* ── markdown in agent replies ─────────────────────────────────────────── */
+
+.md > * + * {
+  margin-top: 0.85em;
+}
+
+.md :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-display);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-top: 1.4em;
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md h1 {
+  font-size: 1.5rem;
+}
+
+.md h2 {
+  font-size: 1.3rem;
+}
+
+.md h3 {
+  font-size: 1.125rem;
+}
+
+.md :is(h4, h5, h6) {
+  font-size: 1rem;
+}
+
+.md :is(strong, b) {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.md a {
+  color: var(--bloom-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.md a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.md :is(ul, ol) {
+  padding-left: 1.4em;
+}
+
+.md ul {
+  list-style: disc;
+}
+
+.md ol {
+  list-style: decimal;
+}
+
+.md li + li,
+.md li > :is(ul, ol) {
+  margin-top: 0.3em;
+}
+
+.md li::marker {
+  color: var(--bloom-deep);
+}
+
+.md li:has(> input[type='checkbox']) {
+  list-style: none;
+  margin-left: -1.4em;
+}
+
+.md input[type='checkbox'] {
+  accent-color: var(--bloom-deep);
+  margin-right: 0.5em;
+  translate: 0 0.1em;
+}
+
+.md blockquote {
+  border-left: 3px solid var(--bloom);
+  padding-left: 1em;
+  color: var(--muted-ink);
+}
+
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin-block: 1.5em;
+}
+
+.md code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.md pre {
+  overflow-x: auto;
+  padding: 0.9em 1.1em;
+  border-radius: 12px;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  line-height: 1.55;
+  scrollbar-width: thin;
+  scrollbar-color: var(--solid-rule) transparent;
+}
+
+.md pre code {
+  padding: 0;
+  background: none;
+  color: inherit;
+  font-size: 0.78rem;
+  white-space: pre;
+}
+
+.md-table {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+}
+
+.md table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.md th {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  text-align: left;
+  background: var(--paper-2);
+}
+
+.md :is(th, td) {
+  padding: 0.45em 0.8em;
+  border-bottom: 1px solid var(--rule);
+}
+
+.md tr:last-child td {
+  border-bottom: 0;
+}
+
+.said {
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.caret {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-left: 0.2em;
+  border-radius: 50%;
+  background: var(--bloom-deep);
+  animation: ring-breathe 1.2s var(--ease-out) infinite;
+}
+
+.scroll-soft {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+
+  .voice .rings path {
+    transform: none;
+  }
+}
+
+/* Syntax colours for file previews (highlight.js classes). Built from the
+   theme's own tokens, so they follow light, dark and any brand applied. */
+.code-hl {
+  --hl-string: var(--focus);
+  --hl-number: var(--signal);
+  --hl-keyword: var(--bloom-deep);
+  --hl-type: color-mix(in oklch, var(--bloom-deep) 50%, var(--focus));
+  --hl-builtin: color-mix(in oklch, var(--focus) 60%, var(--ink));
+  color: var(--ink);
+}
+.code-hl .hljs-comment,
+.code-hl .hljs-quote {
+  color: var(--neutral);
+  font-style: italic;
+}
+.code-hl .hljs-keyword,
+.code-hl .hljs-selector-tag,
+.code-hl .hljs-doctag,
+.code-hl .hljs-section,
+.code-hl .hljs-name,
+.code-hl .hljs-meta .hljs-keyword {
+  color: var(--hl-keyword);
+}
+.code-hl .hljs-string,
+.code-hl .hljs-regexp,
+.code-hl .hljs-template-tag,
+.code-hl .hljs-symbol,
+.code-hl .hljs-addition,
+.code-hl .hljs-meta .hljs-string {
+  color: var(--hl-string);
+}
+.code-hl .hljs-number,
+.code-hl .hljs-literal,
+.code-hl .hljs-deletion,
+.code-hl .hljs-bullet {
+  color: var(--hl-number);
+}
+.code-hl .hljs-attr,
+.code-hl .hljs-attribute,
+.code-hl .hljs-title.class_,
+.code-hl .hljs-type,
+.code-hl .hljs-selector-class,
+.code-hl .hljs-selector-id,
+.code-hl .hljs-template-variable {
+  color: var(--hl-type);
+}
+.code-hl .hljs-built_in,
+.code-hl .hljs-variable.language_,
+.code-hl .hljs-selector-pseudo {
+  color: var(--hl-builtin);
+}
+.code-hl .hljs-title.function_,
+.code-hl .hljs-title {
+  font-weight: 600;
+}
+.code-hl .hljs-meta,
+.code-hl .hljs-punctuation {
+  color: var(--muted-ink);
+}
+.code-hl .hljs-emphasis {
+  font-style: italic;
+}
+.code-hl .hljs-strong {
+  font-weight: 700;
+}
