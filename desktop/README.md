@@ -25,6 +25,8 @@ git push origin v0.2.0
 
 Each platform builds on its own runner and runs the smoke test. The installers land on a draft GitHub release with a `SHA256SUMS` file and build provenance (`gh attestation verify <file> --repo tinolaomahei/mine`). The release stays a draft until it's published by hand. Running the workflow from the Actions tab builds everything without releasing, which is handy for trying the installers first.
 
+Installed copies update themselves from the latest published release (`src/main/updates.ts`, using `electron-updater`). The workflow uploads `latest.yml`, `latest-mac.yml` and `latest-linux.yml` plus the blockmaps next to the installers, and `scripts/merge-mac-updates.mjs` joins the two Mac builds into one `latest-mac.yml`. mine checks about 15 seconds after it starts and every 4 hours, unless Update automatically is off in Settings. On Windows and Linux (AppImage, deb, rpm) the new version downloads in the background, its hash is checked, and it installs when mine restarts, or straight away from Settings, About. A Mac copy can only replace itself once it's signed with a Developer ID, so until then the Mac build says a new version is out and links to the release. Drafts are never offered, only published releases.
+
 Signing is optional and switches on when the secrets are there. Without them, Windows shows a SmartScreen warning, and macOS gets an ad-hoc signature, so the first open has to go through right-click, Open.
 
 | Secret | What it is |
@@ -101,4 +103,4 @@ Approval: nothing an agent writes runs until the person approves it in mine. App
 
 `MINE_USER_DATA` points mine at another data folder, so tests never touch the real one.
 
-Speech runs on this computer. Tap the mic (or Space) to talk, or turn on Always listening (`hands-free`): the mic stays on, Silero VAD finds where the person starts and stops talking, and each stretch goes to Parakeet and then through the same routing as anything typed. Space or the mic pauses it. Prompts go to whichever harness you picked, running in the folder shown in the title bar.
+Speech runs on this computer. Tap the mic (or Space) to talk, or turn on Always listening (`hands-free`): the mic stays on, Silero VAD finds where the person starts and stops talking, and each stretch goes to Parakeet and then through the same routing as anything typed. Space or the mic pauses it. Prompts go to whichever harness you picked, running in the working folder. Both are in Settings (`open-settings`, Ctrl+,), along with instant commands, voice, the look, connected tools and what agents can do without asking.

@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-/** Onboarding step two (and the title bar ⚡): pick a decisions provider and add its key. */
+/** Onboarding step two (and Settings, Instant commands): pick a decisions provider and add its key. */
 export function DecisionsSetup({ harness, onDone, onBack }: { harness: string; onDone: () => void; onBack?: () => void }) {
   const [status, setStatus] = useState<DecisionsStatus | null>(null)
   const [provider, setProvider] = useState<DecisionProviderId>('typesafe')

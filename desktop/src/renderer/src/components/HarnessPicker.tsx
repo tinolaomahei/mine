@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 // The educated guess: if a vendor's own harness is installed, the person most
-// likely signed in to it on purpose. Pi is the fallback mine is built on.
+// likely signed in to it on purpose. Pi is the fallback.
 const PREFERENCE: HarnessId[] = ['claude', 'codex', 'gemini', 'cursor', 'opencode', 'goose', 'pi']
 
 export function guessHarness(list: HarnessInfo[]): HarnessInfo | undefined {
@@ -47,8 +47,8 @@ export function HarnessPicker({
         </h1>
         <p className="mt-4 max-w-[32rem] font-serif text-[1.125rem] leading-[1.5] text-muted-foreground">
           {found.length === 0
-            ? 'mine drives the agent you already use. Install one, then search again. Pi is the one mine is built on.'
-            : 'mine hands what you say to the agent you already use, signed in the way you already are. Pick one. You can switch any time from the title bar.'}
+            ? 'mine drives the agent you already use. Install one, then search again.'
+            : 'mine hands what you say to the agent you already use, signed in the way you already are. Pick one. You can switch any time in Settings.'}
         </p>
 
         {found.length > 0 && (
@@ -88,11 +88,6 @@ export function HarnessPicker({
                   <span className="flex flex-col items-end gap-1.5">
                     {h.id === guess?.id && (
                       <span className="rounded-full bg-bloom px-2 py-0.5 font-mono text-[10px] text-on-bloom uppercase">suggested</span>
-                    )}
-                    {h.id === 'pi' && (
-                      <span className="rounded-full bg-paper-2 px-2 py-0.5 font-mono text-[10px] text-muted-foreground uppercase">
-                        mine’s core
-                      </span>
                     )}
                     {h.version && <span className="font-mono text-[10.5px] text-neutral">v{h.version}</span>}
                   </span>

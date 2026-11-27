@@ -38,7 +38,21 @@ export type Settings = {
   decisions?: DecisionsSettings | null
   /** Always listening: the mic stays on and whatever the person says is picked up when they speak. */
   handsFree?: boolean
+  /** Check GitHub for new versions and install them on restart. On unless turned off. */
+  autoUpdate?: boolean
 }
+
+/** Where mine is with updating itself from the latest GitHub release. */
+export type UpdateState =
+  | { state: 'off'; reason: string }
+  | { state: 'idle' }
+  | { state: 'checking' }
+  | { state: 'current'; checkedAt: number }
+  /** manual: this copy can't replace itself (an unsigned Mac app), so it's a download. */
+  | { state: 'available'; version: string; manual: boolean }
+  | { state: 'downloading'; version: string; percent: number }
+  | { state: 'ready'; version: string }
+  | { state: 'error'; message: string }
 
 export type VoiceState = 'speaking' | 'decoding' | 'quiet'
 export type HeardSpeech = { text: string; seconds: number }
@@ -239,6 +253,15 @@ export interface MineApi {
     feed(samples: Float32Array): void
     onVoice(cb: (s: VoiceState) => void): Unsubscribe
     onHeard(cb: (h: HeardSpeech) => void): Unsubscribe
+  }
+  updates: {
+    state(): Promise<UpdateState>
+    check(): Promise<UpdateState>
+    /** Quit, install the downloaded version and start again. */
+    install(): Promise<void>
+    /** The latest release's page on GitHub, in the browser. */
+    openRelease(): Promise<void>
+    onChange(cb: (s: UpdateState) => void): Unsubscribe
   }
   agent: {
     run(req: RunRequest): Promise<void>

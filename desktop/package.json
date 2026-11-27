@@ -22,6 +22,7 @@
     "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
+    "electron-updater": "6.8.11",
     "sherpa-onnx-node": "^2.0.2"
   },
   "devDependencies": {

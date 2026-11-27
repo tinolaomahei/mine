@@ -34,7 +34,7 @@ export const ADAPTERS: Adapter[] = [
     id: 'pi',
     name: 'Pi',
     vendor: 'Earendil',
-    blurb: 'The open harness mine is built on. Any model, any provider.',
+    blurb: 'An open agent harness. Any model, any provider.',
     commands: ['pi'],
     format: 'pi-json',
     presetSession: true,

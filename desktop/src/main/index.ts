@@ -15,6 +15,7 @@ import { wireScreens } from './screens'
 import { listThemes, wireThemes } from './themes'
 import { askPermission, dropPermissions, wirePermissions } from './permissions'
 import { connectionsPipe, wireConnections } from './connections'
+import { wireUpdates } from './updates'
 import { adapter } from './harness/registry'
 import { dataCall, dataDir } from './data-store'
 import { mkdirSync, watch } from 'node:fs'
@@ -176,6 +177,7 @@ app.whenReady().then(() => {
   wirePermissions(() => win)
   wireThemes(() => win)
   wireConnections(() => win)
+  wireUpdates(() => win)
   const showWidget = (name: string, props: unknown) => win?.webContents.send('widgets:show', { name, props })
   const pipe = wireCommands(() => win, {
     showWidget,

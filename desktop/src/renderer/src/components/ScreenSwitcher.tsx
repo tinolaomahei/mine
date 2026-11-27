@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, LayoutDashboard, Pencil, Plus, Store, X } from 'lucide-react'
+import { ChevronDown, LayoutDashboard, Pencil, Plus, Settings, Store, X } from 'lucide-react'
 import type { Screen } from '@shared/widgets'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 // The way to every screen, from the title bar: open one, make one, rename or
 // delete one, or go to the widget marketplace.
 
-export type Stage = { kind: 'screen'; id: string } | { kind: 'market' } | { kind: 'setup' }
+export type Stage = { kind: 'screen'; id: string } | { kind: 'market' } | { kind: 'setup' } | { kind: 'settings' }
 
 const row =
   'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[0.9375rem] transition-colors duration-100 hover:bg-paper-2 focus-visible:bg-paper-2 focus-visible:outline-none'
@@ -21,6 +21,7 @@ export function ScreenSwitcher({
   onRename,
   onDelete,
   onMarket,
+  onSettings,
 }: {
   screens: Screen[]
   stage: Stage | null
@@ -31,13 +32,14 @@ export function ScreenSwitcher({
   onRename: (id: string, name: string) => void
   onDelete: (id: string) => void
   onMarket: () => void
+  onSettings: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [confirm, setConfirm] = useState<string | null>(null)
   const current = stage?.kind === 'screen' ? screens.find((s) => s.id === stage.id) : undefined
-  const label = !showing ? 'Screens' : stage?.kind === 'market' ? 'Marketplace' : stage?.kind === 'setup' ? 'Your tools' : (current?.name ?? 'Screens')
+  const label = !showing ? 'Screens' : stage?.kind === 'market' ? 'Marketplace' : stage?.kind === 'setup' ? 'Your tools' : stage?.kind === 'settings' ? 'Settings' : (current?.name ?? 'Screens')
   const go = (fn: () => void) => {
     setOpen(false)
     fn()
@@ -166,6 +168,11 @@ export function ScreenSwitcher({
         <button type="button" onClick={() => go(onMarket)} className={cn(row, showing && stage?.kind === 'market' && 'bg-paper-2')}>
           <Store className="size-3.5 text-bloom-deep" />
           <span className="flex-1">Marketplace</span>
+        </button>
+        <button type="button" onClick={() => go(onSettings)} className={cn(row, showing && stage?.kind === 'settings' && 'bg-paper-2')}>
+          <Settings className="size-3.5 text-neutral" />
+          <span className="flex-1">Settings</span>
+          <kbd className="font-mono text-[10px] text-neutral">ctrl ,</kbd>
         </button>
         <p className="px-2.5 pt-1.5 pb-1 font-mono text-[10px] text-neutral">
           <kbd className="font-mono">ctrl j</kbd> shows or hides the conversation

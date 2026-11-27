@@ -15,6 +15,7 @@ import { ThemeShelf } from '@/components/ThemeShelf'
 import { ScreenStart, ServiceShelf, SetupNotice } from '@/components/Connections'
 import { setupLeft, useConnections } from '@/lib/useConnections'
 import { ScreenGrid } from '@/components/ScreenGrid'
+import { SETTINGS_SECTIONS, SettingsPage, type SettingsSection } from '@/components/Settings'
 import { ScreenSwitcher, type Stage } from '@/components/ScreenSwitcher'
 import { clampBox, rowsUsed, settle, whereIs } from '@/lib/grid'
 import { useScreens } from '@/lib/useScreens'
@@ -32,6 +33,7 @@ import { AbilitiesContext, hushed, useAppCommands, type Abilities, type AppComma
 import { stopIntent } from '@/lib/intent'
 import { useConversation } from '@/lib/useConversation'
 import { useSpeech } from '@/lib/useSpeech'
+import { useUpdates } from '@/lib/useUpdates'
 
 type Mode = 'voice' | 'type'
 
@@ -112,7 +114,7 @@ export default function App() {
     flashTimer.current = setTimeout(() => setFlash(null), 4000)
   }
 
-  // 'first' during onboarding, 'edit' when opened from the title bar
+  // 'first' during onboarding, 'edit' when opened from settings
   const [setup, setSetup] = useState<null | 'first' | 'edit'>(null)
   useEffect(() => {
     if (harness && settings && !settings.decisions && setup === null) setSetup('first')
@@ -180,6 +182,8 @@ export default function App() {
 
   // the tools the person uses every day, and what's left to connect
   const conns = useConnections()
+  const update = useUpdates()
+  const updateWaiting = update?.state === 'ready' || (update?.state === 'available' && update.manual)
   const left = setupLeft(conns)
   // "Later" on a screen's setup notice, until something new needs doing
   const [later, setLater] = useState(false)
@@ -248,6 +252,15 @@ export default function App() {
 
   /** The tools page: the whole checklist, in place of the screen, with a way back. */
   const openTools = () => showStage({ kind: 'setup' })
+
+  /** Settings, in place of the screen, opened at one section. */
+  const [settingsAt, setSettingsAt] = useState<{ section: SettingsSection; n: number } | null>(null)
+  const openSettings = (section: SettingsSection = 'agent') => {
+    setSettingsAt({ section, n: Date.now() })
+    showStage({ kind: 'settings' })
+  }
+  const openSettingsRef = useRef(openSettings)
+  openSettingsRef.current = openSettings
 
   /**
    * Show the connection checklist. On an empty screen it's the screen itself.
@@ -547,6 +560,93 @@ export default function App() {
         const was = !!settings?.handsFree
         await setAndKeep({ handsFree: on })
         return { say: on ? 'Listening for your voice' : 'Back to tap to talk', undo: () => void setAndKeep({ handsFree: was }) }
+      },
+    },
+    {
+      name: 'open-settings',
+      title: 'Settings',
+      description:
+        'Open mine’s settings: the agent and working folder, instant commands, voice, light or dark and the theme, connected tools, what agents can do without asking, and the version.',
+      examples: ['open settings', 'show my connections in settings', 'where do I change the agent', 'open the voice settings'],
+      params: {
+        section: {
+          description: 'Which part of the settings',
+          options: (Object.entries(SETTINGS_SECTIONS) as [SettingsSection, string][]).map(([value, description]) => ({ value, description })),
+        },
+      },
+      canUndo: false,
+      run: ({ section }) => {
+        openSettings(section && section in SETTINGS_SECTIONS ? (section as SettingsSection) : 'agent')
+        return { quiet: true }
+      },
+    },
+    {
+      name: 'find-agents',
+      title: 'Search for agents again',
+      description: 'Look for agent CLIs installed on this computer again, after installing a new one.',
+      examples: ['search for agents again', 'I just installed Codex', 'find my agents'],
+      params: {},
+      canUndo: false,
+      run: async () => {
+        const list = await window.mine.harness.detect()
+        setHarnesses(list)
+        const names = list.filter((h) => h.found).map((h) => h.name)
+        return { say: names.length ? `Found ${names.join(', ')}` : 'No agents found on this computer.' }
+      },
+    },
+    {
+      name: 'check-for-updates',
+      title: 'Check for updates',
+      description:
+        'Look for a newer version of mine in the latest GitHub release. On Windows and Linux it downloads in the background and installs when mine restarts.',
+      examples: ['check for updates', 'is there a new version of mine', 'update mine'],
+      params: {},
+      canUndo: false,
+      run: async () => {
+        const u = await window.mine.updates.check()
+        openSettings('about')
+        if (u.state === 'off') return { say: u.reason }
+        if (u.state === 'error') return { say: u.message }
+        if (u.state === 'current') return { say: 'mine is up to date.' }
+        if (u.state === 'available' || u.state === 'downloading' || u.state === 'ready') return { say: `Version ${u.version} is out.` }
+        return { quiet: true }
+      },
+    },
+    ...(update?.state === 'ready'
+      ? [
+          {
+            name: 'restart-to-update',
+            title: 'Restart and update',
+            description: `Restart mine now to install version ${update.version}, which is downloaded and ready.`,
+            examples: ['restart and update', 'install the update now', 'update and restart'],
+            params: {},
+            canUndo: false,
+            run: async () => {
+              await window.mine.updates.install()
+              return { say: 'Restarting to update.' }
+            },
+          } satisfies AppCommand,
+        ]
+      : []),
+    {
+      name: 'automatic-updates',
+      title: 'Update automatically',
+      description: 'Turn automatic updates on or off. On, mine looks for a new release every few hours and gets it ready to install when it restarts.',
+      examples: ['turn off automatic updates', 'stop checking for updates', 'update mine automatically'],
+      params: {
+        state: {
+          description: 'On or off',
+          options: [
+            { value: 'on', description: 'Check for and download new versions automatically' },
+            { value: 'off', description: 'Only check when asked' },
+          ],
+        },
+      },
+      canUndo: true,
+      run: async ({ state }) => {
+        const was = settings?.autoUpdate !== false
+        await setAndKeep({ autoUpdate: state !== 'off' })
+        return { say: state === 'off' ? 'Automatic updates are off' : 'mine will update itself', undo: () => void setAndKeep({ autoUpdate: was }) }
       },
     },
     {
@@ -1229,6 +1329,12 @@ export default function App() {
         return
       }
       if (!harness || setup || explorerOpen.current) return
+      // Ctrl+, opens settings
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key === ',') {
+        e.preventDefault()
+        openSettingsRef.current()
+        return
+      }
       // Ctrl+J: the conversation steps aside for the screen, and comes back
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') {
         e.preventDefault()
@@ -1277,7 +1383,55 @@ export default function App() {
   // what sits behind the conversation: a screen, the marketplace, or a way to start
   const backTo = screens.find((s) => s.id === lastScreen.current) ?? screens[0]
   const stageView =
-    stage?.kind === 'setup' ? (
+    stage?.kind === 'settings' && settings ? (
+      <SettingsPage
+        at={settingsAt}
+        backTo={backTo?.name ?? null}
+        onBack={() => (backTo ? openScreen(backTo.id) : setStage(null))}
+        harnesses={harnesses ?? []}
+        harness={settings.harness}
+        workdir={settings.workdir}
+        onHarness={pick}
+        onRescan={rescan}
+        onWorkdir={async () => setSettings(await window.mine.settings.pickWorkdir())}
+        onExplore={() => setExplorer({ root: settings.workdir })}
+        decisions={{
+          provider: !settings.decisions ? null : settings.decisions.provider === 'off' ? 'off' : decisionProvider(settings.decisions.provider).name,
+          model: settings.decisions?.model,
+        }}
+        onDecisions={() => setSetup('edit')}
+        speech={speech.status}
+        handsFree={!!settings.handsFree}
+        onHandsFree={(on) => void setAndKeep({ handsFree: on })}
+        mode={settings.theme}
+        look={look?.name ?? null}
+        onMode={(theme) => void setAndKeep({ theme })}
+        onThemes={() => {
+          setMarketKind('themes')
+          showStage({ kind: 'market' })
+        }}
+        onResetLook={() => void window.mine.theme.reset()}
+        connections={conns}
+        onConnect={() => {
+          setMarketKind('connections')
+          showStage({ kind: 'market' })
+        }}
+        onDescribe={() => {
+          const blank = screens.find((s) => !s.items.length) ?? screensApi.create()
+          openScreen(blank.id)
+          setTimeout(() => startRef.current?.focus(), 350)
+        }}
+        rules={rules}
+        onStopAllowAll={() => void stopAllowingAll()}
+        onForget={async (folder) => setRules(await window.mine.permissions.forget(folder))}
+        update={update}
+        autoUpdate={settings.autoUpdate !== false}
+        onAutoUpdate={(on) => void setAndKeep({ autoUpdate: on })}
+        onCheckUpdate={() => void window.mine.updates.check()}
+        onInstallUpdate={() => void window.mine.updates.install()}
+        onDownloadUpdate={() => void window.mine.updates.openRelease()}
+      />
+    ) : stage?.kind === 'setup' ? (
       <ScreenStart
         name={backTo?.name ?? 'your screen'}
         state={conns}
@@ -1392,18 +1546,15 @@ export default function App() {
           <Explorer ref={explorerRef} key={explorer.root + (explorer.file ?? '')} root={explorer.root} file={explorer.file} onClose={() => setExplorer(null)} />
         )}
         <TitleBar
-          harnesses={harnesses ?? []}
-          settings={harness ? settings : null}
           canReset={!empty}
           theme={settings?.theme ?? 'system'}
           onTheme={async (theme) => setSettings(await window.mine.settings.set({ theme }))}
-          onHarness={pick}
-          onWorkdir={async () => setSettings(await window.mine.settings.pickWorkdir())}
-          onReset={convo.reset}
-          decisions={
-            !settings?.decisions ? null : settings.decisions.provider === 'off' ? 'off' : decisionProvider(settings.decisions.provider).name
+          onSettings={
+            inApp ? () => (stage?.kind === 'settings' && !full ? (backTo ? openScreen(backTo.id) : setStage(null)) : openSettings()) : undefined
           }
-          onDecisions={() => setSetup('edit')}
+          settingsOpen={stage?.kind === 'settings' && !full}
+          updateWaiting={updateWaiting}
+          onReset={convo.reset}
           screens={
             inApp ? (
               <ScreenSwitcher
@@ -1419,6 +1570,7 @@ export default function App() {
                   if (s) say(`Deleted ${s.name}.`)
                 }}
                 onMarket={() => showStage({ kind: 'market' })}
+                onSettings={() => openSettings()}
               />
             ) : undefined
           }

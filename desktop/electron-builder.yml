@@ -23,6 +23,13 @@ npmRebuild: false
 
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 
+# Where installed copies look for updates: the latest published GitHub release.
+publish:
+  provider: github
+  owner: tinolaomahei
+  repo: mine
+  releaseType: release
+
 win:
   icon: resources/icon.png
   target:

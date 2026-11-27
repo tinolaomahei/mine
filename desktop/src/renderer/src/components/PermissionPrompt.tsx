@@ -129,7 +129,7 @@ export function PermissionPrompt({ ask, compact }: { ask: PermissionAsk; compact
           type="button"
           disabled={!!busy}
           onClick={() => answer('all')}
-          title={`${ask.agent} won’t ask again in ${ask.folder} for anything: commands, edits, web pages. Anything else waiting there goes through too. Turn it off from the title bar.`}
+          title={`${ask.agent} won’t ask again in ${ask.folder} for anything: commands, edits, web pages. Anything else waiting there goes through too. Turn it off from the title bar or Settings.`}
           className="h-8 rounded-full border border-rule px-3.5 text-[0.8125rem] font-semibold transition-colors hover:border-bloom-deep/50 hover:bg-bloom-wash disabled:opacity-60"
         >
           Allow all in {folder}
