@@ -19,3 +19,9 @@ Every release gets a graphic. The tree's name is on it, with the trunk drawn as 
    ```
 
    It writes `<version>.png` here, 2560×1280, which is also the size GitHub uses for social previews.
+
+Animations for the notes live in `media/`. Each one is an HTML page with a `frameAt(seconds)` timeline, so you can open it in a browser to watch it, and render it to a GIF and an MP4 with ffmpeg on your PATH:
+
+```
+npx electron scripts/release-media.cjs widgets
+```
